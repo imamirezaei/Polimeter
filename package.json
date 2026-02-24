@@ -1,0 +1,14 @@
+{
+  "name": "polimeter-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP مینیمال فارسی برای سنجش اولیه فهم مفاهیم چپ و راست",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "NODE_ENV=production node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

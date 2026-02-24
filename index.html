@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پُلیمتر | آزمون مفهومی چپ و راست</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="hero-top">
+          <span class="chip">نسخه استاتیک</span>
+          <div class="theme-switch" role="group" aria-label="تنظیم تم">
+            <button type="button" class="theme-btn" data-theme-mode="system" aria-pressed="true">
+              سیستم
+            </button>
+            <button type="button" class="theme-btn" data-theme-mode="light" aria-pressed="false">
+              روشن
+            </button>
+            <button type="button" class="theme-btn" data-theme-mode="dark" aria-pressed="false">
+              تیره
+            </button>
+          </div>
+        </div>
+        <h1 class="title">آزمون مفهومی چپ و راست</h1>
+        <p class="subtitle">
+          آزمون دوگزینه‌ای برای سنجش دانش مفهومی درباره مفاهیم مرتبط با چپ و راست
+        </p>
+        <p class="notice">
+          این آزمون گرایش سیاسی شما را تعیین نمی‌کند و فقط میزان آشنایی مفهومی شما
+          را می‌سنجد.
+        </p>
+      </header>
+
+      <main>
+        <section id="screen-start" class="screen is-active" aria-label="صفحه شروع">
+          <h2>شروع آزمون</h2>
+          <ul class="intro-list">
+            <li>در هر اجرا ۲۰ سوال از بانک ۴۰ سوالی انتخاب می‌شود.</li>
+            <li>هر سوال فقط یک پاسخ درست قطعی دارد: «چپ» یا «راست».</li>
+            <li>نمره‌دهی کاملا محلی و قطعی است.</li>
+          </ul>
+          <p class="attempt-counter">
+            دفعات شرکت در این مرورگر:
+            <strong id="attempt-count">0</strong>
+          </p>
+          <div class="actions">
+            <button id="start-btn" class="btn btn-primary" type="button">
+              شروع آزمون
+            </button>
+          </div>
+        </section>
+
+        <section id="screen-quiz" class="screen" aria-label="صفحه آزمون">
+          <div class="meta-row">
+            <span>
+              سوال
+              <strong id="question-index">1</strong>
+              از
+              <strong id="question-total">20</strong>
+            </span>
+            <span id="type-badge" class="type-badge">مفهوم</span>
+          </div>
+
+          <div class="progress" aria-hidden="true">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+
+          <h2 id="question-text" class="question"></h2>
+
+          <div class="choice-row">
+            <button
+              id="answer-left"
+              class="btn btn-choice btn-left"
+              type="button"
+              aria-label="گزینه چپ"
+            >
+              چپ
+            </button>
+            <button
+              id="answer-right"
+              class="btn btn-choice btn-right"
+              type="button"
+              aria-label="گزینه راست"
+            >
+              راست
+            </button>
+          </div>
+          <p class="hint-text">برای ادامه، یکی از دو گزینه را انتخاب کنید.</p>
+
+          <div id="feedback" class="feedback is-hidden">
+            <p id="feedback-title" class="feedback-title"></p>
+            <p id="feedback-text" class="feedback-text"></p>
+          </div>
+
+          <div class="actions">
+            <button id="next-btn" class="btn btn-primary" type="button" disabled>
+              بعدی
+            </button>
+          </div>
+        </section>
+
+        <section id="screen-result" class="screen" aria-label="صفحه نتیجه">
+          <h2>نتیجه نهایی آزمون</h2>
+
+          <div class="results-grid">
+            <div class="metric">
+              <span>نمره کل</span>
+              <strong><span id="score-total">0</span>%</strong>
+            </div>
+            <div class="metric">
+              <span>نمره مفاهیم چپ</span>
+              <strong><span id="score-left">0</span>%</strong>
+            </div>
+            <div class="metric">
+              <span>نمره مفاهیم راست</span>
+              <strong><span id="score-right">0</span>%</strong>
+            </div>
+          </div>
+
+          <p class="stats-line">
+            پاسخ درست:
+            <strong id="correct-count">0</strong>
+            |
+            پاسخ غلط:
+            <strong id="wrong-count">0</strong>
+          </p>
+
+          <table class="breakdown" aria-label="تفکیک نوع سوال">
+            <tbody>
+              <tr>
+                <td>مفهوم</td>
+                <td><span id="score-concept">0</span>%</td>
+              </tr>
+              <tr>
+                <td>گزاره</td>
+                <td><span id="score-statement">0</span>%</td>
+              </tr>
+              <tr>
+                <td>تعریف</td>
+                <td><span id="score-definition">0</span>%</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="actions">
+            <button id="restart-btn" class="btn btn-primary" type="button">
+              شروع دوباره
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <p class="footer-note">
+        این پروژه کاملا محلی اجرا می‌شود و نمره‌دهی مبتنی بر هوش مصنوعی ندارد.
+      </p>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
