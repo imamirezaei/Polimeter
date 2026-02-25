@@ -32,8 +32,10 @@ jobs:
         run: |
           rm -rf site
           mkdir -p site
-          cp index.html style.css app.js og-image.svg LICENSE README.md site/
-          cp -R data storage site/
+          cp index.html style.css app.js LICENSE README.md site/
+          [ -f og-image.svg ] && cp og-image.svg site/
+          [ -d storage ] && cp -R storage site/
+          [ -d data ] && cp -R data site/
           touch site/.nojekyll
 
       - name: Upload Pages artifact
