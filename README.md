@@ -1,4 +1,4 @@
-# پولی‌متر | Polimeter
+# Polimeter
 
 Polimeter is a Persian-first political concept quiz app (RTL) focused on early-stage conceptual literacy rather than hard ideological labeling.
 
