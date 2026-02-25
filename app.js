@@ -718,6 +718,8 @@ function chooseAnswer(selectedSide) {
     isCorrect,
     type: question.type,
     correctSide: question.correct_side,
+    questionAxis: question.axis,
+    questionAxisTitle: question.axis_title,
     questionText: question.text,
     explanation: question.explanation,
   };
@@ -1049,6 +1051,10 @@ async function submitAnswersIfConsented(completedAt) {
     answers: state.answers.map((answer) => ({
       question_id: answer.questionId,
       selected_side: answer.selectedSide,
+      correct_side: answer.correctSide,
+      is_correct: Boolean(answer.isCorrect),
+      question_axis: answer.questionAxis,
+      question_axis_title: answer.questionAxisTitle,
     })),
   };
 

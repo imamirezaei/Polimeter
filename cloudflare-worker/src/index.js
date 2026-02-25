@@ -6,6 +6,8 @@ const ALLOWED_SIDES = new Set(["left", "right", "neutral"]);
 const MAX_EVENT_ID_LENGTH = 128;
 const MAX_QUIZ_VERSION_LENGTH = 32;
 const MAX_QUESTION_ID_LENGTH = 64;
+const MAX_AXIS_ID_LENGTH = 64;
+const MAX_AXIS_TITLE_LENGTH = 128;
 const MAX_ANSWERS_PER_SUBMISSION = 100;
 
 export default {
@@ -174,15 +176,27 @@ async function handleSubmissionsRoute(request, env, context) {
     );
   }
 
+  if (!env.ANSWERS_DB) {
+    return jsonResponse(
+      { ok: false, error: "answers_db_not_configured" },
+      {
+        status: 500,
+        allowedOrigin,
+        requestOrigin,
+      },
+    );
+  }
+
   try {
     const payload = await readJsonBody(request);
     const normalizedPayload = normalizeSubmissionPayload(payload);
-    const persisted = await storeSubmission(env.DB, normalizedPayload);
+    const persisted = await storeAnswererSubmission(env.ANSWERS_DB, normalizedPayload);
 
     return jsonResponse(
       {
         ok: true,
-        submissionId: persisted.submissionId,
+        answererId: persisted.answererId,
+        submissionId: persisted.answererId,
         storedAnswers: persisted.storedAnswers,
         createdAt: persisted.createdAt,
       },
@@ -304,7 +318,7 @@ function normalizeSubmissionPayload(payload) {
     throw new ValidationError("consent_required");
   }
 
-  const quizVersion = normalizeText(payload?.quiz_version, MAX_QUIZ_VERSION_LENGTH);
+  const quizVersion = normalizeRequiredText(payload?.quiz_version, MAX_QUIZ_VERSION_LENGTH);
   if (!quizVersion) {
     throw new ValidationError("invalid_quiz_version");
   }
@@ -324,8 +338,9 @@ function normalizeSubmissionPayload(payload) {
 
   const answers = [];
   const questionIdSet = new Set();
+
   for (const entry of payload.answers) {
-    const questionId = normalizeText(entry?.question_id, MAX_QUESTION_ID_LENGTH);
+    const questionId = normalizeRequiredText(entry?.question_id, MAX_QUESTION_ID_LENGTH);
     if (!questionId) {
       throw new ValidationError("invalid_question_id");
     }
@@ -338,10 +353,43 @@ function normalizeSubmissionPayload(payload) {
       throw new ValidationError("invalid_selected_side");
     }
 
+    const correctSideRaw = entry?.correct_side;
+    const correctSide = correctSideRaw == null || correctSideRaw === ""
+      ? null
+      : String(correctSideRaw).trim();
+
+    if (correctSide && !ALLOWED_SIDES.has(correctSide)) {
+      throw new ValidationError("invalid_correct_side");
+    }
+
+    const rawIsCorrect = entry?.is_correct;
+    if (rawIsCorrect != null && typeof rawIsCorrect !== "boolean") {
+      throw new ValidationError("invalid_is_correct");
+    }
+
+    let isCorrect;
+    if (correctSide) {
+      isCorrect = selectedSide === correctSide;
+    } else if (typeof rawIsCorrect === "boolean") {
+      isCorrect = rawIsCorrect;
+    } else {
+      throw new ValidationError("missing_correctness");
+    }
+
+    const questionAxis = normalizeOptionalText(entry?.question_axis, MAX_AXIS_ID_LENGTH);
+    const questionAxisTitle = normalizeOptionalText(
+      entry?.question_axis_title,
+      MAX_AXIS_TITLE_LENGTH,
+    );
+
     questionIdSet.add(questionId);
     answers.push({
       questionId,
       selectedSide,
+      correctSide,
+      isCorrect,
+      questionAxis,
+      questionAxisTitle,
     });
   }
 
@@ -353,14 +401,14 @@ function normalizeSubmissionPayload(payload) {
   };
 }
 
-async function storeSubmission(db, payload) {
-  const submissionId = crypto.randomUUID();
+async function storeAnswererSubmission(answersDb, payload) {
+  const answererId = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
   const statements = [
-    db.prepare(
-      `INSERT INTO quiz_submissions (
-         submission_id,
+    answersDb.prepare(
+      `INSERT INTO answerer_sessions (
+         answerer_id,
          quiz_version,
          started_at,
          completed_at,
@@ -368,7 +416,7 @@ async function storeSubmission(db, payload) {
          created_at
        ) VALUES (?, ?, ?, ?, ?, ?)`,
     ).bind(
-      submissionId,
+      answererId,
       payload.quizVersion,
       payload.startedAt,
       payload.completedAt,
@@ -379,24 +427,37 @@ async function storeSubmission(db, payload) {
 
   for (const answer of payload.answers) {
     statements.push(
-      db.prepare(
-        `INSERT INTO quiz_submission_answers (
-           submission_id,
+      answersDb.prepare(
+        `INSERT INTO answerer_answers (
+           answerer_id,
            question_id,
            selected_side,
+           correct_side,
+           is_correct,
+           question_axis,
+           question_axis_title,
            created_at
-         ) VALUES (?, ?, ?, ?)`,
-      ).bind(submissionId, answer.questionId, answer.selectedSide, createdAt),
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        answererId,
+        answer.questionId,
+        answer.selectedSide,
+        answer.correctSide,
+        answer.isCorrect ? 1 : 0,
+        answer.questionAxis,
+        answer.questionAxisTitle,
+        createdAt,
+      ),
     );
   }
 
-  const results = await db.batch(statements);
+  const results = await answersDb.batch(statements);
   if (results.some((entry) => !entry?.success)) {
-    throw new Error("db_write_failed");
+    throw new Error("answers_db_write_failed");
   }
 
   return {
-    submissionId,
+    answererId,
     storedAnswers: payload.answers.length,
     createdAt,
   };
@@ -424,10 +485,21 @@ function isValidEventId(eventId) {
   return /^[a-zA-Z0-9:_-]+$/.test(eventId);
 }
 
-function normalizeText(value, maxLength) {
+function normalizeRequiredText(value, maxLength) {
   const text = String(value || "").trim();
   if (!text || text.length > maxLength) {
     return "";
+  }
+  return text;
+}
+
+function normalizeOptionalText(value, maxLength) {
+  if (value == null || value === "") {
+    return null;
+  }
+  const text = String(value).trim();
+  if (!text || text.length > maxLength) {
+    throw new ValidationError("invalid_text_field");
   }
   return text;
 }

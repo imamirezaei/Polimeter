@@ -10,4 +10,12 @@ ALLOWED_ORIGIN = "https://imamirezaei.github.io"
 binding = "DB"
 database_name = "polimeter-metrics"
 database_id = "YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
 # preview_database_id = "YOUR_D1_PREVIEW_DATABASE_ID"
+
+[[d1_databases]]
+binding = "ANSWERS_DB"
+database_name = "polimeter-answerers"
+database_id = "YOUR_ANSWERERS_D1_DATABASE_ID"
+migrations_dir = "migrations-answerer"
+# preview_database_id = "YOUR_ANSWERERS_D1_PREVIEW_DATABASE_ID"
