@@ -404,55 +404,16 @@ function normalizeSubmissionPayload(payload) {
 async function storeAnswererSubmission(answersDb, payload) {
   const answererId = crypto.randomUUID();
   const createdAt = new Date().toISOString();
+  const rawSubmission = buildRawSubmissionPayload(payload);
+  const result = await answersDb.prepare(
+    `INSERT INTO answerer_submissions (
+       answerer_id,
+       created_at,
+       submission_json
+     ) VALUES (?, ?, ?)`,
+  ).bind(answererId, createdAt, JSON.stringify(rawSubmission)).run();
 
-  const statements = [
-    answersDb.prepare(
-      `INSERT INTO answerer_sessions (
-         answerer_id,
-         quiz_version,
-         started_at,
-         completed_at,
-         answers_count,
-         created_at
-       ) VALUES (?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      answererId,
-      payload.quizVersion,
-      payload.startedAt,
-      payload.completedAt,
-      payload.answers.length,
-      createdAt,
-    ),
-  ];
-
-  for (const answer of payload.answers) {
-    statements.push(
-      answersDb.prepare(
-        `INSERT INTO answerer_answers (
-           answerer_id,
-           question_id,
-           selected_side,
-           correct_side,
-           is_correct,
-           question_axis,
-           question_axis_title,
-           created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(
-        answererId,
-        answer.questionId,
-        answer.selectedSide,
-        answer.correctSide,
-        answer.isCorrect ? 1 : 0,
-        answer.questionAxis,
-        answer.questionAxisTitle,
-        createdAt,
-      ),
-    );
-  }
-
-  const results = await answersDb.batch(statements);
-  if (results.some((entry) => !entry?.success)) {
+  if (!result?.success) {
     throw new Error("answers_db_write_failed");
   }
 
@@ -460,6 +421,23 @@ async function storeAnswererSubmission(answersDb, payload) {
     answererId,
     storedAnswers: payload.answers.length,
     createdAt,
+  };
+}
+
+function buildRawSubmissionPayload(payload) {
+  return {
+    consent_to_store_answers: true,
+    quiz_version: payload.quizVersion,
+    started_at: payload.startedAt,
+    completed_at: payload.completedAt,
+    answers: payload.answers.map((answer) => ({
+      question_id: answer.questionId,
+      selected_side: answer.selectedSide,
+      correct_side: answer.correctSide,
+      is_correct: answer.isCorrect,
+      question_axis: answer.questionAxis,
+      question_axis_title: answer.questionAxisTitle,
+    })),
   };
 }
 
