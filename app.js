@@ -15,6 +15,10 @@ const metaCounterApiBase = document
   .querySelector('meta[name="polimeter-counter-api-base-url"]')
   ?.getAttribute("content")
   ?.trim();
+const metaSubmissionApiBase = document
+  .querySelector('meta[name="polimeter-submission-api-base-url"]')
+  ?.getAttribute("content")
+  ?.trim();
 
 const API_BASE_URL =
   (typeof window !== "undefined" && window.POLIMETER_API_BASE_URL) ||
@@ -24,6 +28,12 @@ const COUNTER_API_BASE =
   (typeof window !== "undefined" && window.COUNTER_API_BASE) ||
   (typeof window !== "undefined" && window.POLIMETER_COUNTER_API_BASE_URL) ||
   metaCounterApiBase ||
+  API_BASE_URL;
+const SUBMISSION_API_BASE =
+  (typeof window !== "undefined" && window.SUBMISSION_API_BASE) ||
+  (typeof window !== "undefined" && window.POLIMETER_SUBMISSION_API_BASE_URL) ||
+  metaSubmissionApiBase ||
+  COUNTER_API_BASE ||
   API_BASE_URL;
 
 const QUIZ_STATES = {
@@ -110,12 +120,12 @@ function toBaseUrl(pathname, baseUrl) {
   return `${base}${pathname}`;
 }
 
-function hasExplicitApiBase() {
-  return Boolean(String(API_BASE_URL || "").trim());
-}
-
 function hasExplicitCounterApiBase() {
   return Boolean(String(COUNTER_API_BASE || "").trim());
+}
+
+function hasExplicitSubmissionApiBase() {
+  return Boolean(String(SUBMISSION_API_BASE || "").trim());
 }
 
 function isLocalRuntime() {
@@ -126,12 +136,12 @@ function isLocalRuntime() {
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
-function canUseRuntimeApi() {
-  return hasExplicitApiBase() || isLocalRuntime();
-}
-
 function canUseCounterApi() {
   return hasExplicitCounterApiBase() || isLocalRuntime();
+}
+
+function canUseSubmissionApi() {
+  return hasExplicitSubmissionApiBase() || isLocalRuntime();
 }
 
 async function apiRequest(pathname, options = {}, config = {}) {
@@ -141,15 +151,16 @@ async function apiRequest(pathname, options = {}, config = {}) {
   } = config;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type") && options.body != null) {
+    headers.set("Content-Type", "application/json");
+  }
 
   try {
     const response = await fetch(toBaseUrl(pathname, baseUrl), {
       ...options,
       signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
+      headers,
     });
 
     const contentType = response.headers.get("content-type") || "";
@@ -316,9 +327,6 @@ async function fetchMetricsStartCountFromApi() {
     {
       method: "GET",
       cache: "no-store",
-      headers: {
-        "Cache-Control": "no-store",
-      },
     },
     {
       baseUrl: COUNTER_API_BASE,
@@ -335,9 +343,6 @@ async function postMetricsStartEvent(eventId) {
     {
       method: "POST",
       cache: "no-store",
-      headers: {
-        "Cache-Control": "no-store",
-      },
       body: JSON.stringify({ eventId }),
     },
     {
@@ -651,12 +656,12 @@ function startQuizSession() {
   setPhase(QUIZ_STATES.IN_PROGRESS);
   renderQuestion();
 
-  if (state.consentToStoreAnswers && canUseRuntimeApi()) {
+  if (state.consentToStoreAnswers && canUseSubmissionApi()) {
     setApiStatus(
       "با رضایت شما، پاسخ‌ها پس از پایان آزمون به‌صورت ناشناس ذخیره می‌شود.",
       "info",
     );
-  } else if (state.consentToStoreAnswers && !canUseRuntimeApi()) {
+  } else if (state.consentToStoreAnswers && !canUseSubmissionApi()) {
     setApiStatus(
       "نسخه فعلی استاتیک است؛ ذخیره پاسخ فقط در صورت اتصال API انجام می‌شود.",
       "warning",
@@ -1032,7 +1037,7 @@ async function submitAnswersIfConsented(completedAt) {
     return;
   }
 
-  if (!canUseRuntimeApi()) {
+  if (!canUseSubmissionApi()) {
     return;
   }
 
@@ -1048,10 +1053,17 @@ async function submitAnswersIfConsented(completedAt) {
   };
 
   try {
-    await apiRequest("/api/submissions", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    await apiRequest(
+      "/api/submissions",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      {
+        baseUrl: SUBMISSION_API_BASE,
+        timeoutMs: API_TIMEOUT_MS,
+      },
+    );
 
     setApiStatus("پاسخ‌های این آزمون به‌صورت ناشناس ذخیره شد.", "success");
   } catch {
