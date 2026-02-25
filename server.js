@@ -25,6 +25,7 @@ const CORS_ALLOWED_ORIGIN = String(process.env.CORS_ALLOWED_ORIGIN || "")
 const STORAGE_DIR = path.join(ROOT_DIR, "storage");
 const METRICS_FILE = path.join(STORAGE_DIR, "metrics.json");
 const SUBMISSIONS_FILE = path.join(STORAGE_DIR, "submissions.ndjson");
+const ALLOWED_SELECTED_SIDES = new Set(["left", "right", "neutral"]);
 
 const app = express();
 
@@ -46,7 +47,7 @@ const isValidAnswerItem = (item) => {
     return false;
   }
 
-  return selectedSide === "left" || selectedSide === "right";
+  return ALLOWED_SELECTED_SIDES.has(selectedSide);
 };
 
 const nowIso = () => new Date().toISOString();

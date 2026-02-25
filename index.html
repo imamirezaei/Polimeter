@@ -3,11 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="polimeter-api-base-url"
-      content=""
-    />
-    <title>پُلیمتر | آزمون مفهومی چپ و راست</title>
+    <meta name="polimeter-api-base-url" content="" />
+    <title>پولی‌متر | Polimeter</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,58 +15,111 @@
   </head>
   <body>
     <div class="page">
-      <header class="hero">
-        <div class="hero-top">
-          <span class="chip">نسخه استاتیک</span>
-          <div class="theme-switch" role="group" aria-label="تنظیم تم">
-            <button type="button" class="theme-btn" data-theme-mode="system" aria-pressed="true">
-              سیستم
-            </button>
-            <button type="button" class="theme-btn" data-theme-mode="light" aria-pressed="false">
-              روشن
-            </button>
-            <button type="button" class="theme-btn" data-theme-mode="dark" aria-pressed="false">
-              تیره
-            </button>
-          </div>
-        </div>
-        <h1 class="title">آزمون مفهومی چپ و راست</h1>
-        <p class="subtitle">
-          آزمون دوگزینه‌ای برای سنجش دانش مفهومی درباره مفاهیم مرتبط با چپ و راست
-        </p>
-        <p class="notice">
-          این آزمون گرایش سیاسی شما را تعیین نمی‌کند و فقط میزان آشنایی مفهومی شما
-          را می‌سنجد.
-        </p>
+      <header
+        class="page-head"
+        aria-label="معرفی آزمون"
+        style="text-align: center"
+      >
+        <p class="brand-line">پولی‌متر | Polimeter</p>
+        <h1 class="title">آزمون سنجش ابتدایی دانش سیاسی</h1>
       </header>
 
       <main>
-        <section id="screen-start" class="screen is-active" aria-label="صفحه شروع">
-          <h2>شروع آزمون</h2>
-          <ul class="intro-list">
-            <li>در هر اجرا ۲۰ سوال از بانک ۴۰ سوالی انتخاب می‌شود.</li>
-            <li>هر سوال فقط یک پاسخ درست قطعی دارد: «چپ» یا «راست».</li>
-            <li>نمره‌دهی کاملا محلی و قطعی است.</li>
-          </ul>
-          <p class="attempt-counter">
-            <span id="start-count-label">تعداد شروع آزمون:</span>
-            <strong id="attempt-count">0</strong>
-          </p>
-          <label class="consent-option" for="consent-checkbox">
-            <input id="consent-checkbox" type="checkbox" />
-            <span>مایلم پاسخ‌های این آزمون به‌صورت ناشناس برای تحلیل محصول ذخیره شود.</span>
-          </label>
-          <p class="consent-note">
-            هیچ داده هویتی ذخیره نمی‌شود. اگر این تیک را نزنید، پاسخ‌های شما ذخیره نخواهند شد.
-          </p>
-          <div class="actions">
-            <button id="start-btn" class="btn btn-primary" type="button">
-              شروع آزمون
+        <section
+          id="screen-start"
+          class="screen is-active"
+          aria-label="صفحه شروع"
+        >
+          <section class="participant-counter" aria-label="شمارنده شرکت‌کننده">
+            <p class="counter-heading">تعداد شرکت‌کنندگان تا این لحظه</p>
+            <div
+              id="attempt-counter-board"
+              class="counter-board"
+              aria-live="polite"
+            ></div>
+          </section>
+          <details class="intro-accordion" aria-label="توضیح آزمون">
+            <summary class="intro-accordion-summary">
+              <span>توضیح آزمون</span>
+              <span class="accordion-icon" aria-hidden="true"></span>
+            </summary>
+
+            <ul
+              class="intro-list intro-accordion-body"
+              aria-label="جزئیات آزمون"
+            >
+              <li>
+                <span class="bullet-dot" aria-hidden="true"></span>
+                <span
+                  >در هر بار اجرا، ۲۰ سوال به صورت تصادفی و متوازن از میان
+                  محورهای مختلف انتخاب می‌شود.</span
+                >
+              </li>
+              <li>
+                <span class="bullet-dot" aria-hidden="true"></span>
+                <span
+                  >سوال‌ها از چند محور طراحی شده‌اند: اقتصاد، سیاست داخلی، سیاست
+                  خارجی، تاریخ ایران، و امنیت ملی.</span
+                >
+              </li>
+              <li>
+                <span class="bullet-dot" aria-hidden="true"></span>
+                <span
+                  >در پایان، علاوه بر نتیجه کلی، توضیح کوتاهی از منطق هر پاسخ و
+                  مواجهه دیدگاه مقابل هم نمایش داده می‌شود.</span
+                >
+              </li>
+              <li>
+                <span class="bullet-dot" aria-hidden="true"></span>
+                <span
+                  >در صورت فعال‌کردن گزینه ذخیره ناشناس، پاسخ‌ها فقط برای تحلیل
+                  آماری بدون اطلاعات هویتی ذخیره می‌شوند.</span
+                >
+              </li>
+            </ul>
+          </details>
+
+          <div class="section-divider" aria-hidden="true"></div>
+
+          <div class="consent-block">
+            <label class="consent-option" for="consent-checkbox">
+              <input id="consent-checkbox" type="checkbox" />
+              <span
+                >مایلم صرفا پاسخ‌های این آزمون به‌صورت ناشناس برای گزارش‌گیری
+                بعدی ذخیره شود.</span
+              >
+            </label>
+            <p class="consent-note">
+              به‌صورت پیش‌فرض هیچ داده‌ای از شما ذخیره نمی‌شود. اگر این تیک را
+              بزنید، فقط پاسخ‌ها بدون ذخیره اطلاعات هویتی از شما ذخیره می‌شود.
+            </p>
+          </div>
+
+          <div class="actions start-actions">
+            <button
+              id="start-btn"
+              class="btn btn-primary"
+              type="button"
+              style="border-radius: 100px"
+            >
+              شروع تست
             </button>
           </div>
         </section>
 
         <section id="screen-quiz" class="screen" aria-label="صفحه آزمون">
+          <div class="progress-head">
+            <p class="progress-label">پیشرفت پاسخ‌دهی</p>
+            <button
+              id="prev-btn"
+              class="btn btn-secondary btn-prev-mini"
+              type="button"
+              disabled
+            >
+              سوال قبلی
+            </button>
+          </div>
+
           <div class="meta-row">
             <span>
               سوال
@@ -77,7 +127,9 @@
               از
               <strong id="question-total">20</strong>
             </span>
-            <span id="type-badge" class="type-badge">مفهوم</span>
+            <div class="question-tags">
+              <span id="type-badge" class="type-badge">محور</span>
+            </div>
           </div>
 
           <div class="progress" aria-hidden="true">
@@ -88,14 +140,6 @@
 
           <div class="choice-row">
             <button
-              id="answer-left"
-              class="btn btn-choice btn-left"
-              type="button"
-              aria-label="گزینه چپ"
-            >
-              چپ
-            </button>
-            <button
               id="answer-right"
               class="btn btn-choice btn-right"
               type="button"
@@ -103,84 +147,206 @@
             >
               راست
             </button>
+            <button
+              id="answer-neutral"
+              class="btn btn-choice btn-neutral"
+              type="button"
+              aria-label="گزینه نظری ندارم"
+            >
+              نظری ندارم
+            </button>
+            <button
+              id="answer-left"
+              class="btn btn-choice btn-left"
+              type="button"
+              aria-label="گزینه چپ"
+            >
+              چپ
+            </button>
           </div>
-          <p class="hint-text">برای ادامه، یکی از دو گزینه را انتخاب کنید.</p>
+          <p class="hint-text">
+            با انتخاب هر گزینه، سوال بعدی به‌صورت خودکار نمایش داده می‌شود.
+          </p>
 
           <div id="feedback" class="feedback is-hidden">
             <p id="feedback-title" class="feedback-title"></p>
             <p id="feedback-text" class="feedback-text"></p>
           </div>
-
-          <div class="actions">
-            <button id="next-btn" class="btn btn-primary" type="button" disabled>
-              بعدی
-            </button>
-          </div>
         </section>
+
+        <div
+          id="quiz-result-action"
+          class="quiz-result-action"
+          aria-hidden="true"
+        >
+          <button
+            id="next-btn"
+            class="btn btn-primary btn-result-pill"
+            type="button"
+            disabled
+          >
+            مشاهده نتیجه
+          </button>
+        </div>
 
         <section id="screen-result" class="screen" aria-label="صفحه نتیجه">
           <h2>نتیجه نهایی آزمون</h2>
 
-          <div class="results-grid">
-            <div class="metric">
-              <span>نمره کل</span>
-              <strong><span id="score-total">0</span>%</strong>
-            </div>
-            <div class="metric">
-              <span>نمره مفاهیم چپ</span>
-              <strong><span id="score-left">0</span>%</strong>
-            </div>
-            <div class="metric">
-              <span>نمره مفاهیم راست</span>
-              <strong><span id="score-right">0</span>%</strong>
-            </div>
+          <div class="score-cards">
+            <article id="score-card-left" class="score-card">
+              <p class="score-card-title">نمره چپ</p>
+              <div class="score-gauge" aria-hidden="true">
+                <svg class="score-gauge-svg" viewBox="0 0 220 130" aria-hidden="true">
+                  <path
+                    class="score-gauge-track"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-low"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-mid"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-high"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                </svg>
+                <span class="score-gauge-needle"></span>
+                <span class="score-gauge-hub"></span>
+              </div>
+              <p class="score-card-value">
+                <strong id="score-left">۰</strong>
+                <span>از ۱۰۰</span>
+              </p>
+            </article>
+
+            <article id="score-card-right" class="score-card">
+              <p class="score-card-title">نمره راست</p>
+              <div class="score-gauge" aria-hidden="true">
+                <svg class="score-gauge-svg" viewBox="0 0 220 130" aria-hidden="true">
+                  <path
+                    class="score-gauge-track"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-low"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-mid"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-high"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                </svg>
+                <span class="score-gauge-needle"></span>
+                <span class="score-gauge-hub"></span>
+              </div>
+              <p class="score-card-value">
+                <strong id="score-right">۰</strong>
+                <span>از ۱۰۰</span>
+              </p>
+            </article>
+
+            <article id="score-card-total" class="score-card">
+              <p class="score-card-title">نمره کل</p>
+              <div class="score-gauge" aria-hidden="true">
+                <svg class="score-gauge-svg" viewBox="0 0 220 130" aria-hidden="true">
+                  <path
+                    class="score-gauge-track"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-low"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-mid"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                  <path
+                    class="score-gauge-seg score-gauge-seg-high"
+                    pathLength="100"
+                    d="M 30 110 A 80 80 0 0 1 190 110"
+                  ></path>
+                </svg>
+                <span class="score-gauge-needle"></span>
+                <span class="score-gauge-hub"></span>
+              </div>
+              <p class="score-card-value">
+                <strong id="score-total">۰</strong>
+                <span>از ۱۰۰</span>
+              </p>
+            </article>
           </div>
 
           <p class="stats-line">
             پاسخ درست:
-            <strong id="correct-count">0</strong>
-            |
-            پاسخ غلط:
-            <strong id="wrong-count">0</strong>
+            <strong id="correct-count">۰</strong>
+            | پاسخ غلط:
+            <strong id="wrong-count">۰</strong>
           </p>
 
-          <table class="breakdown" aria-label="تفکیک نوع سوال">
-            <tbody>
-              <tr>
-                <td>مفهوم</td>
-                <td><span id="score-concept">0</span>%</td>
-              </tr>
-              <tr>
-                <td>گزاره</td>
-                <td><span id="score-statement">0</span>%</td>
-              </tr>
-              <tr>
-                <td>تعریف</td>
-                <td><span id="score-definition">0</span>%</td>
-              </tr>
-            </tbody>
-          </table>
+          <details
+            class="result-accordion axis-accordion"
+            aria-label="عملکرد محوری"
+          >
+            <summary class="result-accordion-summary">
+              <span>عملکرد بر اساس محورها</span>
+              <span class="accordion-icon" aria-hidden="true"></span>
+            </summary>
+            <div class="result-accordion-body">
+              <div id="axis-breakdown" class="axis-breakdown"></div>
+            </div>
+          </details>
 
-          <section class="review-panel" aria-label="مرور پاسخ‌ها">
-            <h3>مرور پاسخ‌ها و توضیح آموزشی</h3>
-            <p id="review-empty" class="review-empty is-hidden">
-              هنوز داده‌ای برای نمایش وجود ندارد.
-            </p>
-            <div id="review-list" class="review-list"></div>
-          </section>
+          <details class="result-accordion" aria-label="مرور پاسخ‌ها">
+            <summary class="result-accordion-summary">
+              <span>مرور پاسخ‌ها و توضیح آموزشی</span>
+              <span class="accordion-icon" aria-hidden="true"></span>
+            </summary>
+            <div class="result-accordion-body">
+              <p id="review-empty" class="review-empty is-hidden">
+                هنوز داده‌ای برای نمایش وجود ندارد.
+              </p>
+              <div id="review-list" class="review-list"></div>
+            </div>
+          </details>
 
-          <div class="actions">
-            <button id="restart-btn" class="btn btn-primary" type="button">
+          <div class="actions result-actions">
+            <a
+              class="btn btn-secondary btn-link"
+              href="https://smrrazavian.github.io/Political-Attitudes-Map/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              تست گرایش سیاسی
+            </a>
+            <button id="restart-btn" class="btn btn-secondary" type="button">
               شروع دوباره
+            </button>
+            <button id="share-btn" class="btn btn-primary" type="button">
+              اشتراک‌گذاری نتیجه
             </button>
           </div>
         </section>
       </main>
-
-      <p class="footer-note">
-        نمره‌دهی این آزمون محلی است و ذخیره پاسخ فقط با رضایت شما انجام می‌شود.
-      </p>
-      <p id="api-status" class="api-status" aria-live="polite"></p>
     </div>
 
     <script type="module" src="./app.js"></script>

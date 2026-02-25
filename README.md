@@ -1,59 +1,145 @@
-# پُلیمتر
+# پولی‌متر | Polimeter
 
-آزمون مفهومی فارسی برای سنجش آشنایی با مفاهیم مرتبط با سنت‌های فکری چپ و راست.
+Polimeter is a Persian-first political concept quiz app (RTL) focused on early-stage conceptual literacy rather than hard ideological labeling.
 
-## ویژگی‌ها
-- نمره‌دهی کاملا محلی و deterministic
-- بدون ذخیره داده هویتی کاربر
-- ذخیره پاسخ‌ها فقط با رضایت اختیاری (checkbox)
-- شمارنده تعداد شروع آزمون به‌صورت سروری
-- سازگار با معماری Frontend/Backend جدا
-- بانک سوال v2 با ترکیب `50% مفهومی + 50% تاریخی (مشروطه تا امروز)`
-- نمایش توضیح آموزشی سوال‌ها فقط در پایان آزمون
+## Project Overview
 
-## رفتار داده
-- **همیشه ثبت می‌شود:** شمارنده شروع آزمون
-- **فقط با رضایت کاربر ثبت می‌شود:** پاسخ‌های آزمون (`question_id + selected_side`)
-- **هرگز ذخیره نمی‌شود:** اطلاعات هویتی (نام، ایمیل، تلفن، IP، user-agent)
+- UI language: Persian (`fa-IR`, RTL)
+- App type: lightweight SPA with Vanilla JS
+- Quiz size per run: 20 balanced random questions
+- Axes: economy, domestic policy, foreign policy, Iran history, national security
+- Output: overall score, left score, right score, axis breakdown, answer review
 
-## ساختار فایل
-- `index.html`
-- `style.css`
-- `app.js`
-- `data/questions.js`
-- `scripts/audit-question-bias.mjs`
-- `server.js`
+## Tech Stack
 
-## اسکیمای سوال (v2)
-هر سوال در `data/questions.js` شامل این فیلدهاست:
-- `id`
-- `type`: `concept | statement | definition`
-- `domain`: `conceptual | historical`
-- `era`: برای سوال تاریخی یکی از کلاسترها، برای مفهومی `null`
-- `text`
-- `correct_side`: `left | right`
-- `topic`
-- `difficulty`: `easy | medium`
-- `explanation`
-- `evidence_note` (داخلی)
-- `source_refs` (داخلی)
+- Frontend: `index.html`, `style.css`, `app.js`
+- Question bank: `data/questions.js`
+- Optional backend API: `server.js` (Express)
+- Static metrics file: `storage/metrics.json`
+- GitHub Pages CI/CD: `.github/workflows/deploy-pages.yml`
 
-توزیع قفل‌شده بانک:
-- `40` سوال
-- `20 conceptual + 20 historical`
-- `20 left + 20 right`
-- `20 easy + 20 medium`
-- `14 concept + 13 statement + 13 definition`
+## Methodology (فارسی)
 
-## APIها
+### 1) نمره کل
+
+نمره کل با **Weighted Accuracy** محاسبه می‌شود:
+
+`TotalScore = 100 * (sum(weight_i * correct_i) / sum(weight_i))`
+
+- `correct_i` برای پاسخ درست `1` و برای پاسخ غلط `0` است.
+- وزن هر سوال از بانک سوال خوانده می‌شود.
+- انتخاب «نظری ندارم» برای همان سوال امتیاز صفر در نظر می‌گیرد.
+
+### 2) نمره چپ و راست
+
+نمره چپ/راست با **Weighted F1** (one-vs-rest) محاسبه می‌شود:
+
+- `TP`: وقتی کاربر همان سمت درست را انتخاب کرده باشد
+- `FP`: وقتی کاربر آن سمت را انتخاب کند ولی پاسخ درست سمت مقابل باشد
+- `FN`: وقتی پاسخ درست آن سمت بوده ولی کاربر آن سمت را انتخاب نکرده باشد
+
+سپس:
+
+- `Precision = TP / (TP + FP)`
+- `Recall = TP / (TP + FN)`
+- `F1 = 2 * Precision * Recall / (Precision + Recall)`
+- `SideScore = 100 * F1`
+
+این مدل باعث می‌شود انتخاب یک‌طرفه (مثلا همه پاسخ‌ها فقط چپ) به‌صورت مصنوعی نمره کامل تولید نکند.
+
+### 3) وزن‌دهی سوال‌ها
+
+همه سوال‌ها وزن برابر ندارند. وزن بر اساس محور و قطعیت محتوایی تعیین می‌شود و در بازه `0.70` تا `1.30` اعتبارسنجی می‌گردد.
+
+## Privacy Model
+
+- Default behavior: no answer data is stored.
+- With explicit consent checkbox: answers can be sent anonymously for aggregate analysis.
+- No personal identity fields are stored.
+
+## Repository Structure
+
+```text
+.
+├── index.html
+├── style.css
+├── app.js
+├── data/
+│   └── questions.js
+├── storage/
+│   └── metrics.json
+├── server.js
+└── .github/workflows/
+    └── deploy-pages.yml
+```
+
+## Local Development
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Run development server:
+
+```bash
+npm run dev
+```
+
+Default local URL: `http://localhost:8787`
+
+## Static Mode (No Backend)
+
+The project can run fully static (e.g., GitHub Pages):
+
+- Quiz flow works end-to-end in the browser.
+- Participant counter reads from `storage/metrics.json` when available.
+- Local fallback counter is maintained in `localStorage`.
+- `/api/*` requests are only used when a runtime API is available.
+
+## GitHub Pages Deployment
+
+The repository already includes a Pages workflow:
+
+- Workflow file: `.github/workflows/deploy-pages.yml`
+- Trigger: push to `main` or `master` (plus manual dispatch)
+- Build artifact: static files copied into `site/`
+- Jekyll disabled via `site/.nojekyll`
+
+### Enable Pages in GitHub
+
+1. Open repository `Settings > Pages`.
+2. Set source to `GitHub Actions`.
+3. Push to `main` (or `master`).
+4. Wait for the workflow to finish and publish the Pages URL.
+
+## Optional External API
+
+If you host API separately, set:
+
+```html
+<meta name="polimeter-api-base-url" content="https://your-api.example.com" />
+```
+
+Behavior:
+
+- Empty meta value:
+  - On `localhost`, same-origin API is used.
+  - On GitHub Pages, static-only mode is used.
+- Non-empty meta value:
+  - Frontend sends requests to the configured external API base URL.
+
+## Optional API Endpoints
+
 ### `GET /api/metrics`
-نمایش شمارنده شروع آزمون:
+
 ```json
 { "ok": true, "start_count": 12, "updated_at": "..." }
 ```
 
 ### `POST /api/metrics/start`
-افزایش شمارنده شروع آزمون:
+
 ```json
 {
   "started_at": "2026-02-24T12:00:00.000Z",
@@ -62,7 +148,7 @@
 ```
 
 ### `POST /api/submissions`
-ذخیره پاسخ‌ها (فقط با رضایت):
+
 ```json
 {
   "consent_to_store_answers": true,
@@ -70,44 +156,19 @@
   "started_at": "...",
   "completed_at": "...",
   "answers": [
-    { "question_id": "C01", "selected_side": "left" }
+    { "question_id": "eco_01", "selected_side": "left" },
+    { "question_id": "eco_02", "selected_side": "neutral" }
   ]
 }
 ```
 
-### `GET /api/admin/export`
-خروجی NDJSON برای تحلیل (نیازمند هدر `x-admin-token`).
+## Development Notes
 
-## اجرای لوکال
-```bash
-npm install
-npm run dev
-```
+- `AXIS_BANKS` is the source-of-truth dataset in `data/questions.js`.
+- Questions are normalized by `toQuestionRecord`.
+- Validation enforces `axis_title`, `certainty`, and `weight`.
+- Quiz length is controlled by `QUIZ_SIZE` in `app.js`.
 
-آدرس پیش‌فرض:
-- `http://localhost:8787`
+## License
 
-اگر پورت اشغال باشد، سرور خودکار روی پورت بعدی بالا می‌آید.
-
-## گیت کیفیت بانک سوال
-برای بررسی سوگیری واژگانی و توازن توزیع:
-```bash
-npm run questions:audit
-```
-
-خروجی گزارش:
-- `report/questions-audit.json`
-
-## تنظیمات محیطی
-نمونه در `.env.example`:
-- `PORT`
-- `MAX_PORT_ATTEMPTS`
-- `CORS_ALLOWED_ORIGIN`
-- `ADMIN_EXPORT_TOKEN`
-
-## استقرار پیشنهادی
-- Frontend: GitHub Pages
-- Backend: سرویس جدا (Render / Fly / Railway / ...)
-
-برای اتصال فرانت به بک‌اند جدا:
-- در `index.html` مقدار `<meta name="polimeter-api-base-url" content="...">` را روی URL بک‌اند قرار دهید.
+This project is released under the [MIT License](./LICENSE).

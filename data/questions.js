@@ -1,12 +1,17 @@
 /**
- * پروژه پُلیمتر - بانک سوال‌های آزمون (v2)
- * سنجش مفهومی deterministic با تمرکز بر کاهش سوگیری واژگانی
+ * پروژه پُلیمتر - بانک سوال‌های آزمون
+ * نسخه مرحله‌ای: سوال‌ها محور به محور اضافه می‌شوند.
  */
 
 const ALLOWED_TYPES = new Set(["concept", "statement", "definition"]);
 const ALLOWED_SIDES = new Set(["left", "right"]);
 const ALLOWED_DIFFICULTY = new Set(["easy", "medium"]);
 const ALLOWED_DOMAINS = new Set(["conceptual", "historical"]);
+const ALLOWED_CERTAINTY = new Set(["high", "medium", "low"]);
+const AXIS_WEIGHT_RANGE = {
+  min: 0.7,
+  max: 1.3,
+};
 const ALLOWED_AXES = new Set([
   "economic",
   "domestic_policy",
@@ -14,1265 +19,1110 @@ const ALLOWED_AXES = new Set([
   "historical",
   "national_security",
 ]);
-const ALLOWED_LINK_TYPES = new Set(["primary", "secondary", "explainer"]);
-const ALLOWED_ERAS = new Set([
-  "constitutional",
-  "oil-nationalization",
-  "post-1979",
-  "reconstruction-privatization",
-  "reform-civic",
-]);
 
-const QUESTIONS = [
-  // ===== CONCEPT QUESTIONS (C01-C14) =====
-  {
-    id: "C01",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "اگر یک برنامه اقتصادی بگوید برای کم‌کردن فاصله نقطه شروع خانواده‌ها باید آموزش و درمان پایه با بودجه عمومی تقویت شود، این منطق به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "opportunity-inequality",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این چارچوب، سیاست عمومی را ابزار اصلی کاهش نابرابری فرصت می‌داند.",
-    evidence_note:
-      "تاکید بر کاهش شکاف فرصت از مسیر هزینه عمومی، قرابت بالاتری با سنت‌های چپ دارد.",
-    source_refs: [
-      "T.H. Marshall - Citizenship and Social Class",
-      "Karl Polanyi - The Great Transformation",
-    ],
-  },
-  {
-    id: "C02",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "اگر چارچوبی رشد را وابسته به امنیت حقوق دارایی و امکان اجرای تعهدات بداند، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "property-contract",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این خوانش، امنیت حقوقی شرط اولیه سرمایه‌گذاری و رشد تلقی می‌شود.",
-    evidence_note:
-      "مرکزیت حقوق دارایی و قابلیت اجرای تعهدات، با سنت‌های راست بازارگرا هم‌خوان‌تر است.",
-    source_refs: [
-      "F. A. Hayek - The Road to Serfdom",
-      "John Locke - Second Treatise of Government",
-    ],
-  },
-  {
-    id: "C03",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "اگر گفته شود برای یک‌طرفه نشدن رابطه کارفرما-کارگر باید نمایندگی جمعی نیروی کار تقویت شود، حتی اگر هزینه استخدام کمی بالاتر برود، این موضع به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "labor-bargaining",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا اولویت با تعدیل عدم‌تقارن قدرت در بازار کار است، نه صرفا حداقل‌کردن هزینه استخدام.",
-    evidence_note:
-      "دفاع از نمایندگی جمعی نیروی کار در برابر مبادله صرفا فردی، در سنت چپ برجسته‌تر است.",
-    source_refs: [
-      "Rosa Luxemburg - Reform or Revolution",
-      "E.P. Thompson - The Making of the English Working Class",
-    ],
-  },
-  {
-    id: "C04",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "در چارچوبی که می‌گوید مداخله مستقیم دولت در قیمت‌ها فقط هنگام شکست روشن بازار مجاز است و در حالت عادی باید به سازوکار قیمت تکیه کرد، گرایش غالب کدام است؟",
-    correct_side: "right",
-    topic: "state-intervention",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این رویکرد مداخله را استثنا و اتکای اصلی را بر سازوکار قیمت قرار می‌دهد.",
-    evidence_note:
-      "قید «مداخله محدود مگر شکست بازار» معمولا در سنت راست لیبرال صورت‌بندی می‌شود.",
-    source_refs: [
-      "Milton Friedman - Capitalism and Freedom",
-      "F. A. Hayek - Law, Legislation and Liberty",
-    ],
-  },
-  {
-    id: "C05",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "اگر سیاستی تضمین حداقل معیشت را حتی در رکود ضروری بداند و برای تامین آن افزایش سهم پرداختی گروه‌های پردرآمد را بپذیرد، این سیاست به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "social-minimum",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این منطق، حفظ کف معیشت بر کاهش بار مالیاتی اولویت دارد.",
-    evidence_note:
-      "ترکیب تضمین حداقل معیشت با بازتوزیع بار مالی، قرابت بیشتری با سیاست‌گذاری چپ دارد.",
-    source_refs: [
-      "G.A. Cohen - If You're an Egalitarian, How Come You're So Rich?",
-      "John Rawls - A Theory of Justice",
-    ],
-  },
-  {
-    id: "C06",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "رویکردی که چندعرضه‌کننده بودن بازار را موتور نوآوری می‌داند و از بنگاه‌داری گسترده دولت پرهیز می‌کند، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "competition-innovation",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این نگاه، نوآوری را محصول رقابت و انگیزه بنگاه‌ها می‌بیند.",
-    evidence_note:
-      "ارجحیت سازوکار رقابتی نسبت به بنگاه‌داری مستقیم دولت، به سنت راست نزدیک‌تر است.",
-    source_refs: [
-      "Joseph Schumpeter - Capitalism, Socialism and Democracy",
-      "Ludwig von Mises - Liberalism",
-    ],
-  },
-  {
-    id: "C07",
-    type: "concept",
-    domain: "conceptual",
-    era: null,
-    text: "وقتی دولت تصمیم بگیرد ابتدا شکاف توسعه بین استان‌ها کم شود، حتی اگر سرعت رشد میانگین در کوتاه‌مدت کمتر شود، این اولویت به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "regional-inequality",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا عدالت منطقه‌ای و همگرایی فرصت‌ها بر شتاب رشد کوتاه‌مدت مقدم شده است.",
-    evidence_note:
-      "پذیرش مبادله رشد کوتاه‌مدت برای کاهش شکاف منطقه‌ای، با سنت چپ سازگارتر است.",
-    source_refs: [
-      "Amartya Sen - Development as Freedom",
-      "Karl Polanyi - The Great Transformation",
-    ],
-  },
-  {
-    id: "C08",
-    type: "concept",
-    domain: "historical",
-    era: "constitutional",
-    text: "در سال‌های پس از مشروطه، خوانشی که مجلس را ابزار مهار تمرکز قدرت اجرایی و تقویت امنیت حقوق دارایی می‌دید، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "constitutionalism",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این صورت‌بندی بر محدودسازی قدرت دولت و پیش‌بینی‌پذیری حقوقی تاکید دارد.",
-    evidence_note:
-      "قانون‌گرایی محدودکننده قدرت اجرایی همراه با تاکید بر حقوق دارایی، با سنت راست قرابت بیشتری دارد.",
-    source_refs: [
-      "Nikki Keddie - Modern Iran",
-      "Mangol Bayat - Iran's First Revolution",
-    ],
-  },
-  {
-    id: "C09",
-    type: "concept",
-    domain: "historical",
-    era: "oil-nationalization",
-    text: "در بحث‌های مرتبط با ملی‌شدن نفت، این خوانش که درآمد منابع ملی باید اولویتاً صرف گسترش خدمات همگانی و کاهش شکاف اجتماعی شود، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "oil-nationalization",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این نگاه، منابع طبیعی ابزار عدالت اجتماعی و بازتوزیع فرصت تلقی می‌شوند.",
-    evidence_note:
-      "اولویت دادن به مصرف اجتماعی درآمد منابع ملی، با سنت‌های چپ همخوان‌تر است.",
-    source_refs: [
-      "Ervand Abrahamian - Iran Between Two Revolutions",
-      "Mohammad Mosaddegh Speeches (selected)",
-    ],
-  },
-  {
-    id: "C10",
-    type: "concept",
-    domain: "historical",
-    era: "post-1979",
-    text: "در دهه نخست پس از انقلاب ۱۳۵۷، رویکردی که جیره‌بندی و کنترل قیمت کالاهای اساسی را برای حفاظت از معیشت اقشار آسیب‌پذیر لازم می‌دانست، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "postrevolution-distribution",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این چارچوب، ثبات معیشت را حتی با مداخله مستقیم در بازار کالاهای پایه دنبال می‌کند.",
-    evidence_note:
-      "اتکا به سیاست‌های توزیعی و حمایتی گسترده در بحران، در تحلیل‌ها به سنت چپ نزدیک‌تر ارزیابی می‌شود.",
-    source_refs: [
-      "Kevan Harris - A Social Revolution",
-      "Asef Bayat - Workers and Revolution in Iran",
-    ],
-  },
-  {
-    id: "C11",
-    type: "concept",
-    domain: "historical",
-    era: "reconstruction-privatization",
-    text: "در دوره بازسازی پس از جنگ، سیاستی که آزادسازی تدریجی قیمت‌ها را برای کاهش رانت و افزایش انگیزه تولید ضروری می‌دانست، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "postwar-reconstruction",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا فرض می‌شود قیمت‌گذاری اداری پایدار، سیگنال‌های تولید را مخدوش و رانت را تقویت می‌کند.",
-    evidence_note:
-      "دفاع از آزادسازی تدریجی قیمت‌ها و مشوق‌های تولیدی، با سنت راست اقتصادی همخوانی بیشتری دارد.",
-    source_refs: [
-      "Djavad Salehi-Isfahani - Iran's Economy (selected papers)",
-      "World Bank - Iran structural adjustment notes",
-    ],
-  },
-  {
-    id: "C12",
-    type: "concept",
-    domain: "historical",
-    era: "reconstruction-privatization",
-    text: "در همان دوره، دیدگاهی که هزینه اجتماعی تعدیل را مسئله اصلی می‌دانست و بر سپر حمایتی برای مزدبگیران تاکید داشت، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "adjustment-critique",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این نگاه، پایداری اصلاحات را وابسته به جبران فشار معیشتی گروه‌های آسیب‌پذیر می‌بیند.",
-    evidence_note:
-      "اولویت دادن به هزینه اجتماعی تعدیل و سیاست جبرانی، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "UNDP Human Development Reports (Iran sections)",
-      "Asef Bayat - Street Politics (contextual)",
-    ],
-  },
-  {
-    id: "C13",
-    type: "concept",
-    domain: "historical",
-    era: "reform-civic",
-    text: "در دوره اصلاحات، رویکردی که جامعه مدنی را ابزار مطالبه توزیع عادلانه‌تر بودجه آموزش و سلامت می‌دانست، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "reform-civic-justice",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این خوانش، نهادهای مدنی را برای کاهش شکاف فرصت و ارتقای دسترسی عمومی به‌کار می‌گیرد.",
-    evidence_note:
-      "پیوند جامعه مدنی با عدالت توزیعی خدمات عمومی، قرابت بیشتری با سنت چپ دارد.",
-    source_refs: [
-      "Saeed Madani - Social Movements in Iran (selected)",
-      "Farideh Farhi - Reform era analyses",
-    ],
-  },
-  {
-    id: "C14",
-    type: "concept",
-    domain: "historical",
-    era: "reform-civic",
-    text: "در همان دوره، خوانشی که کیفیت اصلاح نهادی را با ثبات قواعد اقتصادی و حمایت حقوقی از دارایی می‌سنجید، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "reform-ruleoflaw",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا موفقیت اصلاحات به پیش‌بینی‌پذیری قواعد و امنیت حقوقی پیوند می‌خورد.",
-    evidence_note:
-      "محور قراردادن ثبات قواعد و حقوق دارایی، در دسته‌بندی تحلیلی به سنت راست نزدیک‌تر است.",
-    source_refs: [
-      "Vali Nasr - Democracy in Iran (selected)",
-      "Rule of Law reports on Iran economy",
-    ],
-  },
+const SIDE_MAP = {
+  چپ: "left",
+  راست: "right",
+};
 
-  // ===== STATEMENT QUESTIONS (S01-S13) =====
-  {
-    id: "S01",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "برای افزایش سرمایه‌گذاری، کاهش بار مالیاتی بنگاه‌ها همراه با اجرای سخت‌گیرانه قواعد ضدانحصار اولویت دارد.",
-    correct_side: "right",
-    topic: "tax-investment",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره کاهش هزینه فعالیت اقتصادی را با حفظ رقابت پیوند می‌دهد.",
-    evidence_note:
-      "ترجیح کاهش بار مالیاتی همراه با رقابت‌پذیری، از الگوهای رایج سنت راست بازارگرا است.",
-    source_refs: [
-      "Milton Friedman - Free to Choose",
-      "OECD Competition Policy papers",
-    ],
-  },
-  {
-    id: "S02",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "برای مهار فقر شهری، افزایش هزینه آموزش و سلامت عمومی حتی با فشار بودجه‌ای محدود قابل‌دفاع است، چون سازوکار بازار به‌تنهایی شکاف فرصت را اصلاح نمی‌کند.",
-    correct_side: "left",
-    topic: "urban-poverty",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا مداخله دولت مکمل ضروری بازار برای کاهش شکاف فرصت تلقی می‌شود.",
-    evidence_note:
-      "پذیرش هزینه بودجه‌ای برای سیاست اجتماعی جبرانی، با سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Amartya Sen - Development as Freedom",
-      "UN Human Development reports",
-    ],
-  },
-  {
-    id: "S03",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "وقتی قیمت‌ها از تعامل عرضه و تقاضا شکل بگیرند و نه بخشنامه اداری، تخصیص منابع غالبا دقیق‌تر می‌شود.",
-    correct_side: "right",
-    topic: "price-mechanism",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره، قیمت را سیگنال اطلاعاتی برای هماهنگی تصمیم‌های اقتصادی می‌داند.",
-    evidence_note:
-      "اتکای بیشتر به سازوکار قیمت نسبت به دستور اداری، با سنت راست همخوانی دارد.",
-    source_refs: [
-      "F. A. Hayek - Use of Knowledge in Society",
-      "Milton Friedman - Capitalism and Freedom",
-    ],
-  },
-  {
-    id: "S04",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "در رکود شدید، پرداخت حمایتی هدفمند به خانوارهای کم‌درآمد می‌تواند از افت تقاضای کل جلوگیری کند.",
-    correct_side: "left",
-    topic: "countercyclical-policy",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا حمایت درآمدی نقش تثبیت‌کننده برای اقتصاد و معیشت دارد.",
-    evidence_note:
-      "تاکید بر سیاست حمایتی ضدچرخه‌ای برای گروه‌های آسیب‌پذیر، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "John Maynard Keynes - General Theory",
-      "Post-crisis fiscal policy reviews",
-    ],
-  },
-  {
-    id: "S05",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "اگر دولت نقش تنظیم‌گری را از مالکیت مستقیم بنگاه‌ها جدا کند، کارایی اقتصادی در بلندمدت افزایش می‌یابد.",
-    correct_side: "right",
-    topic: "state-capacity",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره تفکیک نقش حاکمیتی از نقش بنگاه‌داری را بهبوددهنده کارایی می‌داند.",
-    evidence_note:
-      "دفاع از دولت تنظیم‌گر به‌جای دولت بنگاه‌دار، به سنت راست نزدیک‌تر است.",
-    source_refs: [
-      "World Bank - Governance and State-owned Enterprises",
-      "Friedman - Free to Choose",
-    ],
-  },
-  {
-    id: "S06",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "تنظیم حداقل دستمزد باید طوری باشد که قدرت خرید نیروی کار در برابر تورم فرسوده نشود.",
-    correct_side: "left",
-    topic: "minimum-wage",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره از مداخله نهادی برای حفظ سطح معیشت مزدبگیران دفاع می‌کند.",
-    evidence_note:
-      "اولویت حفظ دستمزد واقعی نیروی کار، با سنت چپ همخوان‌تر است.",
-    source_refs: [
-      "ILO wage policy briefs",
-      "Labor economics textbooks (collective bargaining chapters)",
-    ],
-  },
-  {
-    id: "S07",
-    type: "statement",
-    domain: "conceptual",
-    era: null,
-    text: "واگذاری فعالیت‌های قابل رقابت به بخش خصوصی، اگر قواعد نظارتی روشن باشد، می‌تواند هزینه اداره دولت را کاهش دهد.",
-    correct_side: "right",
-    topic: "privatization-governance",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره از واگذاری مشروط به شفافیت و نظارت دفاع می‌کند.",
-    evidence_note:
-      "ترجیح واگذاری فعالیت رقابتی با تنظیم‌گری روشن، در سنت راست اقتصادی رایج‌تر است.",
-    source_refs: [
-      "OECD - Privatisation and Corporate Governance",
-      "Friedman - Capitalism and Freedom",
-    ],
-  },
-  {
-    id: "S08",
-    type: "statement",
-    domain: "historical",
-    era: "constitutional",
-    text: "در منازعات مشروطه، تاکید بر کاهش امتیازهای انحصاری و بازتر شدن فضای دادوستد داخلی، بیشتر به کدام سنت نزدیک است؟",
-    correct_side: "right",
-    topic: "constitutional-market",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این صورت‌بندی، کانون بحث کاهش انحصار و گسترش آزادی مبادله است.",
-    evidence_note:
-      "کاهش انحصار دولتی و گشایش فضای مبادله، به سنت راست نزدیک‌تر طبقه‌بندی می‌شود.",
-    source_refs: [
-      "Homa Katouzian - State and Society in Iran",
-      "Constitutional Revolution economic debates (selected)",
-    ],
-  },
-  {
-    id: "S09",
-    type: "statement",
-    domain: "historical",
-    era: "oil-nationalization",
-    text: "پس از ملی‌شدن نفت، این گزاره که اولویت هزینه‌کرد درآمد نفت باید خدمات عمومی و کاهش شکاف منطقه‌ای باشد، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "left",
-    topic: "oil-revenue-allocation",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره استفاده از درآمد منابع ملی برای عدالت فضایی و اجتماعی را برجسته می‌کند.",
-    evidence_note:
-      "تمرکز بر بازتوزیع اجتماعی و منطقه‌ای درآمد نفت، با سنت چپ قرابت بیشتری دارد.",
-    source_refs: [
-      "Ervand Abrahamian - Iran Between Two Revolutions",
-      "Iran oil politics historical studies",
-    ],
-  },
-  {
-    id: "S10",
-    type: "statement",
-    domain: "historical",
-    era: "post-1979",
-    text: "در دهه نخست پس از انقلاب، این دیدگاه که ثبات تولید نیازمند حقوق دارایی روشن و امکان اجرای قابل‌اتکای تعهدات است، به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "postrevolution-production",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره پیش‌بینی‌پذیری حقوقی را شرط محیط تولید پایدار می‌گیرد.",
-    evidence_note:
-      "تاکید بر حقوق دارایی و اجرای تعهدات برای ثبات تولید، در سنت راست پررنگ‌تر است.",
-    source_refs: [
-      "Djavad Salehi-Isfahani - Iranian labor and production studies",
-      "Institutional economics texts",
-    ],
-  },
-  {
-    id: "S11",
-    type: "statement",
-    domain: "historical",
-    era: "post-1979",
-    text: "گسترش نهادهای حمایتی برای خانوارهای آسیب‌دیده جنگ، حتی با هزینه بودجه‌ای بالا، بیشتر با کدام سنت همخوان است؟",
-    correct_side: "left",
-    topic: "war-welfare",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره بر اولویت سیاست حمایتی در وضعیت بحران اجتماعی تاکید دارد.",
-    evidence_note:
-      "اولویت دادن به پوشش حمایتی گسترده در بحران، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Kevan Harris - A Social Revolution",
-      "Iran welfare institutions reports",
-    ],
-  },
-  {
-    id: "S12",
-    type: "statement",
-    domain: "historical",
-    era: "reconstruction-privatization",
-    text: "این گزاره که «واگذاری مالکیت بدون رقابت واقعی ناکارآمد است، اما با تنظیم‌گری دقیق می‌تواند بهره‌وری را بالا ببرد» به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "privatization-conditions",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا واگذاری نه مطلقا رد می‌شود نه مطلقا تایید؛ قید تعیین‌کننده، کیفیت رقابت و تنظیم‌گری است.",
-    evidence_note:
-      "دفاع مشروط از واگذاری مالکیت در چارچوب رقابت، به سنت راست نزدیک‌تر است.",
-    source_refs: [
-      "OECD - Competition and Privatisation",
-      "Transition economics literature",
-    ],
-  },
-  {
-    id: "S13",
-    type: "statement",
-    domain: "historical",
-    era: "reform-civic",
-    text: "این گزاره که «شفاف‌سازی مقررات و حذف مجوزهای زائد ورود کسب‌وکارهای کوچک را آسان‌تر می‌کند» به کدام سنت نزدیک‌تر است؟",
-    correct_side: "right",
-    topic: "regulatory-reform",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این گزاره کاهش اصطکاک مقرراتی را عامل تسهیل ورود بنگاه‌های کوچک می‌داند.",
-    evidence_note:
-      "ساده‌سازی مقررات برای تقویت ورود و رقابت، در سنت راست اقتصادی رایج‌تر است.",
-    source_refs: [
-      "Doing Business methodology (historical)",
-      "Regulatory impact assessment guides",
-    ],
-  },
+const AXIS_ID_ALIASES = {
+  domestic_politics: "domestic_policy",
+  iran_history: "historical",
+};
 
-  // ===== DEFINITION QUESTIONS (D01-D13) =====
+const normalizeAxisWeight = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 1;
+  }
+  return Math.max(AXIS_WEIGHT_RANGE.min, Math.min(AXIS_WEIGHT_RANGE.max, numeric));
+};
+
+const AXIS_BANKS = [
   {
-    id: "D01",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "نگاهی که می‌گوید بخشی از درآمدهای بالاتر باید برای تامین خدمات پایه مشترک هزینه شود تا فاصله فرصت‌ها کمتر شود.",
-    correct_side: "left",
-    topic: "tax-redistribution",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف مالیات را ابزار کاهش شکاف فرصت و تامین خدمات عمومی می‌داند.",
-    evidence_note:
-      "کارکرد بازتوزیعی مالیات برای خدمات پایه، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "John Rawls - A Theory of Justice",
-      "Thomas Piketty - Capital and Ideology",
+    axis_id: "economic",
+    axis_title: "محور اقتصادی",
+    axis_certainty: "high",
+    axis_weight: 1.0,
+    items: [
+      {
+        id: "eco_01",
+        question:
+          "اگر در یک چارچوب اقتصادی گفته شود «اولویت سیاست‌گذار باید حفظ ثبات قواعد، اجرای قراردادها باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر پیش‌بینی‌پذیری، امنیت حقوقی و کاهش نااطمینانی برای کنشگران اقتصادی تاکید دارد و معمولا در سنت‌های راست بازارگرا پررنگ‌تر است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید ثبات قواعد مهم است، اما اگر همین قواعد نابرابری ساختاری را بازتولید کنند، صرف ثبات برای سیاست خوب کافی نیست.",
+      },
+      {
+        id: "eco_02",
+        question:
+          "اگر گفته شود «سیاست اقتصادی موفق تنها وابسته به رشد میانگین تولید نیست»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه می‌گوید کیفیت توزیع رشد، دسترسی گروه‌های مختلف به فرصت و اثر رشد بر زندگی واقعی مردم هم باید معیار ارزیابی باشد.",
+        counter_view:
+          "دیدگاه راست می‌پذیرد رشد میانگین کافی نیست، اما معمولا تاکید می‌کند که بدون رشد پایدار، امکان تامین گسترده رفاه و خدمات هم محدود می‌شود.",
+      },
+      {
+        id: "eco_03",
+        question:
+          "اگر درباره بازار کار گفته شود «حتی در اقتصاد رقابتی، بدون نهادهای جمعیِ مذاکره، تعادل قدرت بازیگران اقتصادی برقرار نمی‌شود»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی بر این فرض استوار است که رابطه کار و سرمایه همیشه متقارن نیست و نهادهای جمعی برای اصلاح توازن قدرت لازم‌اند.",
+        counter_view:
+          "دیدگاه راست می‌گوید نهادهای جمعی اگر بیش از حد سخت‌گیر شوند، می‌توانند انعطاف بازار کار و ظرفیت اشتغال را کاهش دهند.",
+      },
+      {
+        id: "eco_04",
+        question:
+          "اگر گفته شود «وظیفه اصلی دولت در اقتصاد، تنظیم قواعد رقابت و جلوگیری از انحصار است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه دولت را بیشتر تنظیم‌گر قواعد بازی می‌بیند تا بازیگر مستقیم اقتصاد، و رقابت را موتور کارایی می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تنظیم رقابت لازم است، اما در برخی حوزه‌ها فقط ضدانحصار کافی نیست و دولت باید نقش فعال‌تری در تامین خدمات پایه داشته باشد.",
+      },
+      {
+        id: "eco_05",
+        question:
+          "اگر در سیاست‌گذاری مالی گفته شود «مالیات باید طوری طراحی شود که هم سرمایه‌گذاری را نابود نکند و هم هزینه خدمات پایه عمومی را تامین کند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی مالیات را فقط ابزار درآمدی نمی‌بیند، بلکه آن را بخشی از سازوکار تامین خدمات عمومی و کاهش شکاف فرصت می‌داند.",
+        counter_view:
+          "دیدگاه راست بر این تاکید می‌کند که اگر بار مالیاتی از حدی فراتر رود، انگیزه سرمایه‌گذاری، تولید و رشد اقتصادی آسیب می‌بیند.",
+      },
+      {
+        id: "eco_06",
+        question:
+          "اگر گفته شود «در دوره رکود، حمایت درآمدی از خانوارهای کم‌درآمد فقط یک سیاست رفاهی نیست و می‌تواند ابزار تثبیت اقتصاد هم باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه حمایت درآمدی را همزمان ابزار عدالت اجتماعی و ابزار حفظ تقاضا در دوره رکود می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید حمایت رکودی می‌تواند موقت و ضروری باشد، اما اگر طولانی و بدون هدف‌گذاری باشد، فشار بودجه‌ای و ناکارایی ایجاد می‌کند.",
+      },
+      {
+        id: "eco_07",
+        question:
+          "اگر درباره خصوصی‌سازی گفته شود «مسئله اصلی مالکیت خصوصی یا دولتی نیست، بلکه کیفیت و شفافیت رقابت هم اهمیت دارد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی دفاع ساده‌انگارانه از خصوصی‌سازی نیست و بر رقابت، شفافیت و طراحی نهادی درست تاکید می‌کند که به سنت راست نزدیک‌تر است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید حتی خصوصی‌سازی شفاف هم در برخی بخش‌های حیاتی ممکن است دسترسی برابر یا منطق خدمات عمومی را تضعیف کند.",
+      },
+      {
+        id: "eco_08",
+        question:
+          "اگر گفته شود «وقتی بازار کار فعال است، دولت باید برای کاهش نابرابری نسلی روی آموزش عمومی و حمایت پایه سرمایه‌گذاری کند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه نابرابری نسلی را با سیاست‌های فرصت‌محور مثل آموزش عمومی و حمایت پایه هدف می‌گیرد.",
+        counter_view:
+          "دیدگاه راست می‌گوید آموزش مهم است، اما کیفیت اجرا، بهره‌وری هزینه‌ها و پرهیز از گسترش بی‌ضابطه تعهدات دولت هم باید همزمان دیده شود.",
+      },
+      {
+        id: "eco_09",
+        question:
+          "اگر در تحلیل نابرابری گفته شود «تفاوت درآمد فقط نتیجه تلاش فردی نیست و ساختار آموزش، شبکه‌ها و نهادها هم اثر دارند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی تحلیل ساختاری از نابرابری ارائه می‌دهد و فقط به تفاوت استعداد یا تلاش فردی اکتفا نمی‌کند.",
+        counter_view:
+          "دیدگاه راست می‌گوید عوامل ساختاری مهم‌اند، اما سیاست‌گذاری نباید عاملیت فردی، انگیزه و مسئولیت شخصی را از تحلیل حذف کند.",
+      },
+      {
+        id: "eco_10",
+        question:
+          "اگر درباره دستمزد گفته شود «مزد باید از مسیر توافق در بازار تعیین شود، مگر جایی که شکست نهادی یا انحصار قدرت وجود دارد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه اصل را بر سازوکار توافق بازار می‌گذارد و مداخله را به موارد استثنایی شکست نهادی محدود می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در عمل، شکست قدرت چانه‌زنی در بازار کار فراگیرتر از آن است که فقط به موارد استثنایی تقلیل داده شود.",
+      },
+      {
+        id: "eco_11",
+        question:
+          "اگر گفته شود «دولت باید حداقل امنیت معیشتی را تضمین کند، اما سیاست رفاهی نباید به وابستگی پایدار و فرسایش انگیزه اقتصادی منجر شود»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب نسخه‌ای از راست رفاهی است که هم حداقل حمایت را می‌پذیرد و هم نگران آثار بلندمدت وابستگی و کاهش انگیزه است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تاکید بیش از حد بر وابستگی می‌تواند بهانه‌ای برای کوچک‌سازی حمایت اجتماعی و نادیده‌گرفتن ناامنی واقعی زندگی شود.",
+      },
+      {
+        id: "eco_12",
+        question:
+          "اگر در سیاست‌گذاری صنعتی گفته شود «حمایت از تولید داخلی فقط زمانی قابل دفاع است که زمان‌دار، شفاف و قابل ارزیابی باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی از حمایت صنعتی مشروط دفاع می‌کند و بر محدودبودن زمان، شفافیت و ارزیابی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در برخی صنایع راهبردی، افق زمانی بلندتر و مداخله فعال‌تر دولت ممکن است لازم باشد و صرف منطق کوتاه‌مدت کافی نیست.",
+      },
+      {
+        id: "eco_13",
+        question:
+          "اگر گفته شود «کاهش مقررات زائد برای ورود کسب‌وکارهای کوچک مهم است، اما نباید به تضعیف حقوق کار و مصرف‌کننده منجر شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب اولویت را به کاهش اصطکاک ورود و تسهیل کسب‌وکار می‌دهد، در عین این که حداقل‌های حقوقی را هم حفظ می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در عمل، بسیاری از پروژه‌های مقررات‌زدایی از همین نقطه شروع می‌شوند اما نهایتا به تضعیف نظارت و حقوق گروه‌های ضعیف‌تر می‌رسند.",
+      },
+      {
+        id: "eco_14",
+        question:
+          "اگر درباره قیمت‌گذاری گفته شود «کنترل مستقیم قیمت در بلندمدت معمولا بازار را مخدوش می‌کند، مگر در شرایط اضطراری محدود»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه سازوکار قیمت را ابزار اصلی هماهنگی می‌داند و مداخله مستقیم را فقط برای شرایط بحرانی و موقت مجاز می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در برخی بازارهای حیاتی مثل کالاهای پایه، تکیه کامل بر قیمت می‌تواند به حذف عملی گروه‌های کم‌درآمد منجر شود.",
+      },
+      {
+        id: "eco_15",
+        question:
+          "اگر گفته شود «برای کاهش فقر، تمرکز بر کیفیت خدمات عمومی در محله‌های ضعیف مهم‌تر از اتکا به رشد شاخص‌های کلان اقتصاد است»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب بر سیاست‌های هدفمند در سطح خدمات عمومی و کیفیت دسترسی تاکید دارد، نه صرفا امید به سرریز رشد کلان.",
+        counter_view:
+          "دیدگاه راست می‌گوید بدون رشد پایدار و محیط کسب‌وکار سالم، منابع لازم برای بهبود همین خدمات عمومی هم محدود می‌شود.",
+      },
+      {
+        id: "eco_16",
+        question:
+          "اگر درباره عدالت اقتصادی گفته شود «سیاست خوب باید هم از نوآوری و سرمایه‌گذاری حمایت کند و هم جلوی تمرکز بیش‌ازحد قدرت اقتصادی را بگیرد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی عدالت را ضد رشد تعریف نمی‌کند، بلکه می‌خواهد رشد و نوآوری با مهار تمرکز قدرت اقتصادی همراه شوند.",
+        counter_view:
+          "دیدگاه راست می‌گوید تمرکز بر مهار تمرکز قدرت باید با احتیاط باشد تا به سیاست‌گذاری ضدسرمایه‌گذاری و کاهش انگیزه نوآوری تبدیل نشود.",
+      },
+      {
+        id: "eco_17",
+        question:
+          "اگر گفته شود «یارانه‌های عمومی وقتی موجه‌اند که به شکل هدفمند شکاف فرصت را کم کنند، نه این که صرفا مصرف کوتاه‌مدت را بالا ببرند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه یارانه را به عنوان ابزار سیاست اجتماعی هدفمند می‌بیند که باید به کاهش شکاف فرصت منجر شود.",
+        counter_view:
+          "دیدگاه راست می‌گوید حتی یارانه هدفمند هم اگر دقیق طراحی نشود، می‌تواند ناکارایی، فساد اجرایی و تعهدات مالی سنگین ایجاد کند.",
+      },
+      {
+        id: "eco_18",
+        question:
+          "اگر در تحلیل رشد گفته شود «امنیت حقوق مالکیت و ثبات نهادی، پیش‌شرط رشد پایدارند حتی قبل از سیاست‌های حمایتی گسترده»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب رشد پایدار را وابسته به قاعده‌مندی، ثبات نهادی و امنیت حقوقی می‌داند و آن‌ها را مقدم بر گسترش سیاست‌های حمایتی می‌گذارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تقدم‌دادن مطلق به این پیش‌شرط‌ها ممکن است به تعویق طولانی سیاست‌های ضروری برای کاهش نابرابری و فقر بینجامد.",
+      },
+      {
+        id: "eco_19",
+        question:
+          "اگر گفته شود «مسئله اصلی اقتصاد فقط تولید ثروت نیست، بلکه نحوه توزیع ریسک و ناامنی اقتصادی در جامعه هم هست»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی اقتصاد را فقط با خروجی تولید نمی‌سنجد و توزیع ناامنی، ریسک و آسیب‌پذیری را هم وارد تحلیل می‌کند.",
+        counter_view:
+          "دیدگاه راست می‌گوید توزیع ریسک مهم است، اما اگر تمرکز سیاست بیش از حد روی توزیع باشد و روی خلق ثروت کم شود، کل ظرفیت اقتصادی افت می‌کند.",
+      },
+      {
+        id: "eco_20",
+        question:
+          "اگر درباره نقش دولت گفته شود «دولت باید ظرفیت تنظیم‌گری قوی داشته باشد، حتی اگر اندازه بنگاه‌داری‌اش کوچک باشد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب دولت کوچک به معنای دولت ضعیف نیست و بر دولت تنظیم‌گر توانمند تاکید می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در برخی حوزه‌ها، صرف تنظیم‌گری کافی نیست و دولت باید برای تضمین دسترسی برابر، نقش اجرایی مستقیم هم داشته باشد.",
+      },
     ],
   },
   {
-    id: "D02",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "نگاهی که آزادی تصمیم اقتصادی را به امنیت حقوق دارایی و قابلیت اجرای تعهدات وابسته می‌داند.",
-    correct_side: "right",
-    topic: "contract-freedom",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این تعریف، آزادی اقتصادی بدون چارچوب حقوقی پایدار ممکن تلقی نمی‌شود.",
-    evidence_note:
-      "پیوند آزادی اقتصادی با امنیت حقوق دارایی و تعهدات، از عناصر سنت راست است.",
-    source_refs: [
-      "John Locke - Second Treatise",
-      "Friedrich Hayek - The Constitution of Liberty",
+    axis_id: "domestic_politics",
+    axis_title: "محور سیاست داخلی",
+    axis_certainty: "high",
+    axis_weight: 0.98,
+    items: [
+      {
+        id: "dom_01",
+        question:
+          "اگر در یک چارچوب حکمرانی گفته شود «اولویت اصلاح سیاسی، تقویت نهادهای قانونی و قابل‌پیش‌بینی‌کردن فرایند تصمیم‌گیری است»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر حاکمیت قانون، ثبات نهادی و پیش‌بینی‌پذیری تصمیم‌گیری تاکید دارد و معمولا به سنت‌های راست نهادی نزدیک‌تر است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تقویت نهادهای قانونی مهم است، اما اگر نابرابری دسترسی به قدرت و نمایندگی اصلاح نشود، صرف نهادسازی کافی نیست.",
+      },
+      {
+        id: "dom_02",
+        question:
+          "اگر گفته شود «معیار موفقیت سیاست داخلی فقط ثبات اداری نیست و باید کیفیت دسترسی تمام جامعه به فرصت مشارکت برابر هم سنجیده شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه موفقیت حکمرانی را با کیفیت مشارکت و توزیع فرصت سیاسی می‌سنجد، نه فقط با نظم اداری.",
+        counter_view:
+          "دیدگاه راست می‌گوید مشارکت مهم است، اما بدون ثبات اداری و ظرفیت اجرایی، گسترش مشارکت می‌تواند به بی‌نظمی و ناکارآمدی منجر شود.",
+      },
+      {
+        id: "dom_03",
+        question:
+          "اگر درباره قانون‌گذاری گفته شود «قانون خوب باید ساده، عمومی و کم‌استثنا باشد تا اجرای آن برای همه برابر و یکسان شود»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر سادگی قانون، عمومیت قواعد و کاهش استثناها برای افزایش برابری شکلی در اجرا تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید برابری شکلی مهم است، اما در برخی موارد برای جبران نابرابری واقعی، سیاست‌های متمایز یا حمایتی هم لازم می‌شود.",
+      },
+      {
+        id: "dom_04",
+        question:
+          "اگر گفته شود «در سیاست داخلی، بدون تقویت نهادهای میانجی و تشکل‌های اجتماعی، توازن قدرت در جامعه برقرار نمی‌شود»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه نهادهای میانجی را ابزار توزیع قدرت و کاهش عدم‌تقارن میان دولت و گروه‌های اجتماعی می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید نهادهای میانجی مفیدند، اما اگر بیش از حد سیاسی یا غیرپاسخ‌گو شوند، می‌توانند فرایند حکمرانی را کند و پرهزینه کنند.",
+      },
+      {
+        id: "dom_05",
+        question:
+          "اگر در تحلیل حکمرانی گفته شود «تمرکز بیش از حد اختیار در مرکز، حتی با نیت کارآمدی، می‌تواند نابرابری سیاسی تولید کند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی به پیامدهای توزیعی قدرت توجه دارد و تمرکز را فقط مسئله کارایی نمی‌بیند.",
+        counter_view:
+          "دیدگاه راست می‌گوید در برخی شرایط، تمرکز بیشتر اختیار برای حفظ انسجام تصمیم‌گیری و اجرای موثر سیاست‌ها ضروری است.",
+      },
+      {
+        id: "dom_06",
+        question:
+          "اگر گفته شود «دولت باید در سیاست داخلی بیشتر نقش داور قواعد را داشته باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه نقش دولت را بیشتر در تنظیم و داوری قواعد می‌بیند تا مداخله مستقیم در همه عرصه‌های اجتماعی.",
+        counter_view:
+          "دیدگاه چپ می‌گوید دولت فقط داور بی‌طرف نیست، چون اگر در اصلاح نابرابری‌های واقعی نقش فعال نگیرد، قواعد موجود به نفع گروه‌های قوی‌تر عمل می‌کنند.",
+      },
+      {
+        id: "dom_07",
+        question:
+          "اگر درباره مشارکت سیاسی گفته شود «گسترش مشارکت عمومی زمانی معنادار است که هزینه ورود برای برخی گروه‌های اجتماعی هم پایین بیاید»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی مشارکت را صرف حق رسمی نمی‌بیند و به موانع واقعی ورود گروه‌های مختلف توجه می‌کند.",
+        counter_view:
+          "دیدگاه راست می‌گوید کاهش هزینه ورود مهم است، اما نباید به پیچیده‌شدن بیش از حد نظام سیاست‌گذاری یا تضعیف معیارهای نهادی منجر شود.",
+      },
+      {
+        id: "dom_08",
+        question:
+          "اگر گفته شود «حکمرانی خوب نیازمند تفکیک روشن مسئولیت‌ها است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب روی شفافیت نقش‌ها، پاسخ‌گویی و کاهش ابهام نهادی تاکید دارد که از اصول حکمرانی نهادی در سنت راست است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تفکیک مسئولیت لازم است، اما کیفیت نمایندگی و دسترسی برابر به فرایندهای تصمیم‌سازی هم باید همزمان سنجیده شود.",
+      },
+      {
+        id: "dom_09",
+        question:
+          "اگر در سیاست داخلی گفته شود «بی‌طرفی ظاهری قانون کافی نیست و باید دید در عمل چه گروه‌هایی بیشتر از فرایندها حذف می‌شوند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه به تفاوت میان برابری رسمی و برابری واقعی توجه دارد و پیامدهای عملی قانون را محور تحلیل می‌گذارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید اگر معیارهای ارزیابی بیش از حد پیامدمحور شوند، خطر سیاسی‌شدن اجرای قانون و تضعیف اصل عمومیت قواعد بالا می‌رود.",
+      },
+      {
+        id: "dom_10",
+        question:
+          "اگر درباره نظم سیاسی گفته شود «ثبات نهادی پایدارتر از هم‌بستگی مقطعی است»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی ثبات را محصول نهادهای پایدار و قواعد تکرارپذیر می‌داند، نه صرفا اجماع‌های موقت.",
+        counter_view:
+          "دیدگاه چپ می‌گوید ثبات نهادی اگر با توزیع نابرابر قدرت همراه باشد، می‌تواند نارضایتی انباشته تولید کند و ثبات بلندمدت را فرسوده کند.",
+      },
+      {
+        id: "dom_11",
+        question:
+          "اگر گفته شود «اصلاحات داخلی باید علاوه بر کارآمدی، اثرشان بر توزیع صدا و نمایندگی اجتماعی را هم نشان دهد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه کارآمدی را کافی نمی‌داند و توزیع نمایندگی و صدا را هم معیار موفقیت اصلاحات می‌گیرد.",
+        counter_view:
+          "دیدگاه راست می‌گوید اگر اصلاحات بیش از حد با معیارهای توزیعی سنجیده شوند، ممکن است تصمیم‌گیری اجرایی و سرعت حل مسئله تضعیف شود.",
+      },
+      {
+        id: "dom_12",
+        question:
+          "اگر در بحث تمرکززدایی گفته شود «انتقال اختیار به سطح محلی زمانی مفید است که مسئولیت مالی و نظارت حقوقی هم روشن باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب تمرکززدایی را مشروط به طراحی نهادی دقیق، پاسخ‌گویی مالی و نظارت حقوقی روشن می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تمرکز بر شروط حقوقی و مالی نباید بهانه‌ای برای تعویق طولانی انتقال قدرت به سطوح محلی شود.",
+      },
+      {
+        id: "dom_13",
+        question:
+          "اگر گفته شود «نهادهای مدنی فقط مکمل دولت نیستند، بلکه ابزار کاهش شکاف قدرت در سیاست داخلی هم هستند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی نهادهای مدنی را بخشی از معماری توزیع قدرت می‌بیند، نه صرفا ابزار خدمات‌رسانی یا همکاری با دولت.",
+        counter_view:
+          "دیدگاه راست می‌گوید نهادهای مدنی مهم‌اند، اما باید شفاف، پاسخ‌گو و در چارچوب قواعد عمومی عمل کنند تا خودشان به منبع رانت تبدیل نشوند.",
+      },
+      {
+        id: "dom_14",
+        question:
+          "اگر درباره اصلاح اداری گفته شود «کاهش مجوزها و رویه‌های زائد در اداره کشور، بخشی از اصلاح سیاسی است چون روابط غیررسمی را کم می‌کند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه اصلاح اداری را ابزار کاهش اصطکاک، فساد رویه‌ای و نفوذ روابط غیررسمی در حکمرانی می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید حذف رویه‌های زائد خوب است، اما ساده‌سازی اداری نباید به کاهش نظارت عمومی یا تضعیف حمایت از گروه‌های آسیب‌پذیر منجر شود.",
+      },
+      {
+        id: "dom_15",
+        question:
+          "اگر گفته شود «در سیاست داخلی، عدالت فقط به اجرای یکسان قانون محدود نمی‌شود و به توان واقعی مردم برای استفاده از حقوقشان هم مربوط است»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب عدالت را ترکیبی از حق رسمی و امکان واقعی بهره‌برداری از آن حق می‌بیند.",
+        counter_view:
+          "دیدگاه راست می‌گوید اگر عدالت بیش از حد به برداشت‌های ظرفیتی گره بخورد، ممکن است اصل بی‌طرفی قانون و وحدت قواعد آسیب ببیند.",
+      },
+      {
+        id: "dom_16",
+        question:
+          "اگر درباره رابطه دولت و جامعه گفته شود «وظیفه دولت تعیین چارچوب حقوقی روشن است و جامعه باید درون آن چارچوب نهادهای خود را بسازد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه دولت را طراح و نگهبان چارچوب حقوقی می‌بیند و بر خودسازمان‌دهی جامعه درون قواعد تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید جامعه همیشه از نقطه شروع برابر وارد این چارچوب نمی‌شود و گاهی بدون حمایت فعال، نهادسازی اجتماعی نابرابر می‌ماند.",
+      },
+      {
+        id: "dom_17",
+        question:
+          "اگر گفته شود «در سنجش کیفیت حکمرانی، باید دید چه کسانی در سیاست‌گذاری نماینده ندارند، نه فقط این که تصمیم‌ها چقدر سریع گرفته می‌شوند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی بر نمایندگی و صدای گروه‌های کم‌نماینده تاکید دارد و سرعت تصمیم را تنها معیار نمی‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید نمایندگی مهم است، اما اگر فرایند سیاست‌گذاری بیش از حد گسترده و چندلایه شود، توان تصمیم‌گیری موثر دولت آسیب می‌بیند.",
+      },
+      {
+        id: "dom_18",
+        question:
+          "اگر در سیاست داخلی گفته شود «اصلاح پایدار از مسیر تقویت حاکمیت قانون می‌گذرد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب حاکمیت قانون را زیرساخت اصلاحات پایدار می‌داند و بر قاعده‌مندی به جای تصمیم‌های موردی تاکید می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید حاکمیت قانون لازم است، اما اگر قوانین موجود نابرابری را تثبیت کنند، تقویت صرف آن‌ها به عدالت سیاسی منجر نمی‌شود.",
+      },
+      {
+        id: "dom_19",
+        question:
+          "اگر گفته شود «برای کاهش تنش‌های داخلی، سیاست عمومی باید کانال‌های رسمی چانه‌زنی را تقویت کند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه تعارض اجتماعی را قابل مدیریت می‌بیند و بر نهادسازی برای گفت‌وگو و چانه‌زنی رسمی تاکید می‌کند.",
+        counter_view:
+          "دیدگاه راست می‌گوید کانال‌های چانه‌زنی مفیدند، اما نباید جایگزین اقتدار قاعده‌مند دولت و اجرای یکسان قانون شوند.",
+      },
+      {
+        id: "dom_20",
+        question:
+          "اگر درباره ساختار حکمرانی گفته شود «دولت می‌تواند کوچک‌تر باشد اما باید در تنظیم‌گری، داوری و تضمین اجرای قواعد، ظرفیت بالاتری داشته باشد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی نسخه دولت کوچک اما دولت توانمند است که بر کیفیت ظرفیت نهادی بیش از حجم مداخله تاکید می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید در برخی حوزه‌ها کوچک‌کردن دولت ممکن است به کاهش دسترسی عمومی و تضعیف عدالت در ارائه خدمات بینجامد.",
+      },
     ],
   },
   {
-    id: "D03",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "تحلیلی که تفاوت نتیجه‌ها را فقط محصول کوشش فردی نمی‌بیند و نابرابری نهادی در آموزش، کار و دسترسی را وارد تبیین می‌کند.",
-    correct_side: "left",
-    topic: "structural-inequality",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف، سازوکارهای ساختاری تولید شکاف را کنار عامل فردی قرار می‌دهد.",
-    evidence_note:
-      "تاکید بر نابرابری نهادی و ساختاری، با سنت چپ قرابت بیشتری دارد.",
-    source_refs: [
-      "Erik Olin Wright - Class Analysis",
-      "Pierre Bourdieu - forms of capital",
+    axis_id: "foreign_policy",
+    axis_title: "محور سیاست خارجی",
+    axis_certainty: "medium",
+    axis_weight: 0.94,
+    items: [
+      {
+        id: "for_01",
+        question:
+          "اگر در یک چارچوب سیاست خارجی گفته شود «اولویت اصلی باید حفظ منافع ملی از مسیر توازن قوا و پرهیز از وابستگی بلندمدت باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر منافع ملی، توازن قوا و کاهش وابستگی بلندمدت تاکید دارد و به رویکردهای راست در سیاست خارجی نزدیک‌تر است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید حفظ منافع ملی مهم است، اما معیار سیاست خارجی نباید فقط توازن قوا باشد و باید پیامدهای اجتماعی و توزیعی آن هم سنجیده شود.",
+      },
+      {
+        id: "for_02",
+        question:
+          "اگر گفته شود «سیاست خارجی موفق فقط با امنیت مرزی سنجیده نمی‌شود و باید اثر آن بر معیشت داخل کشور هم سنجیده شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه موفقیت سیاست خارجی را با اثر آن بر زندگی مردم و معیشت داخلی هم می‌سنجد، نه فقط با شاخص‌های امنیتی.",
+        counter_view:
+          "دیدگاه راست می‌گوید اثر معیشتی مهم است، اما بدون اولویت‌دادن به امنیت و ثبات، سیاست خارجی نمی‌تواند منافع پایدار اقتصادی تولید کند.",
+      },
+      {
+        id: "for_03",
+        question:
+          "اگر درباره روابط خارجی گفته شود «تعهدات بین‌المللی زمانی پایدارند که بر مبنای قراردادهای روشن و قابل پیش‌بینی تنظیم شوند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر قراردادهای روشن، پیش‌بینی‌پذیری و قاعده‌مندی روابط خارجی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید قرارداد روشن لازم است، اما باید دید این تعهدات در عمل چه اثری بر شکاف‌های داخلی و نابرابری‌های جهانی می‌گذارند.",
+      },
+      {
+        id: "for_04",
+        question:
+          "اگر گفته شود «در سیاست خارجی، توجه به نابرابری جهانی و موقعیت کشورهای ضعیف‌تر باید بخشی از معیار تصمیم‌گیری باشد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی نگاه توزیعی به نظم جهانی دارد و موقعیت کشورهای ضعیف‌تر را در ارزیابی سیاست خارجی مهم می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید توجه به نابرابری جهانی مهم است، اما سیاست خارجی در درجه اول باید با معیار منافع ملی و پایداری راهبردی سنجیده شود.",
+      },
+      {
+        id: "for_05",
+        question:
+          "اگر در تحلیل دیپلماسی گفته شود «گسترش تجارت خارجی می‌تواند ابزار کاهش تنش باشد، به شرط حفظ منافع اقتصادی و منافع تولید داخلی»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه تجارت را ابزار دیپلماسی می‌داند، اما آن را به محاسبه منافع ملی و حفاظت از تولید داخلی مشروط می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تجارت خارجی فقط وقتی موفق است که منافع آن میان گروه‌های اجتماعی مختلف توزیع شود و به نابرابری داخلی دامن نزند.",
+      },
+      {
+        id: "for_06",
+        question:
+          "اگر گفته شود «همکاری منطقه‌ای باید طوری طراحی شود که فقط نخبگان اقتصادی سود نبرند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب بر پیامدهای توزیعی همکاری منطقه‌ای و سهم گروه‌های مختلف اجتماعی از منافع آن تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید در همکاری منطقه‌ای، اولویت نخست ساختن چارچوب‌های پایدار و قابل اتکاست و توزیع منافع را باید در مرحله سیاست‌گذاری داخلی تنظیم کرد.",
+      },
+      {
+        id: "for_07",
+        question:
+          "اگر درباره تحریم گفته شود «اولویت سیاست خارجی باید کاهش ریسک نهادی و افزایش قابلیت پیش‌بینی برای فعالان اقتصادی باشد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر کاهش نااطمینانی، ثبات نهادی و پیش‌بینی‌پذیری برای کنشگران اقتصادی تاکید می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید کاهش ریسک نهادی مهم است، اما باید همزمان اثر تحریم و پاسخ سیاستی بر گروه‌های آسیب‌پذیر داخلی هم محور تصمیم‌گیری باشد.",
+      },
+      {
+        id: "for_08",
+        question:
+          "اگر گفته شود «در مواجهه با فشار خارجی، سیاست عمومی باید تاثیرات اجتماعی آن بر گروه‌های مختلف داخلی را همزمان در نظر بگیرد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه فشار خارجی را فقط مسئله امنیتی یا دیپلماتیک نمی‌بیند و پیامدهای اجتماعی داخلی را هم معیار قرار می‌دهد.",
+        counter_view:
+          "دیدگاه راست می‌گوید توجه به پیامدهای اجتماعی مهم است، اما در شرایط فشار خارجی، حفظ انسجام تصمیم‌گیری و ثبات راهبردی اولویت پایه‌ای دارد.",
+      },
+      {
+        id: "for_09",
+        question:
+          "اگر در سیاست منطقه‌ای گفته شود «ائتلاف‌ها باید بر اساس محاسبه هزینه، فایده و پایداری تنظیم شوند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب ائتلاف‌ها را با منطق محاسبه‌پذیر، هزینه و فایده و دوام راهبردی ارزیابی می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید محاسبه هزینه و فایده لازم است، اما باید پیامدهای اجتماعی و نابرابری‌زای ائتلاف‌ها نیز در این محاسبه وارد شود.",
+      },
+      {
+        id: "for_10",
+        question:
+          "اگر گفته شود «در ارزیابی توافق‌های خارجی، باید دید کدام طبقات اجتماعی هزینه اصلی بر جامعه تحمیل می‌شود یا خیر»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی ارزیابی توافق خارجی را به توزیع هزینه‌ها میان طبقات اجتماعی پیوند می‌دهد.",
+        counter_view:
+          "دیدگاه راست می‌گوید ارزیابی طبقاتی مهم است، اما توافق خارجی باید پیش از هر چیز از نظر پایداری حقوقی و منافع کلان ملی سنجیده شود.",
+      },
+      {
+        id: "for_11",
+        question:
+          "اگر درباره دیپلماسی اقتصادی گفته شود «امنیت سرمایه‌گذاری خارجی وابسته به ثبات داخلی است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه دیپلماسی اقتصادی را بر پایه ثبات داخلی، پیش‌بینی‌پذیری و اطمینان برای سرمایه‌گذاری می‌بیند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید جذب سرمایه مهم است، اما باید دید این سرمایه‌گذاری چه اثری بر عدالت اجتماعی و توزیع فرصت در داخل کشور می‌گذارد.",
+      },
+      {
+        id: "for_12",
+        question:
+          "اگر گفته شود «سیاست خارجی نباید فقط دولت-محور بماند و باید اثرش بر دسترسی جامعه هم سنجیده شود»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب سیاست خارجی را از سطح دولت فراتر می‌برد و آن را با دسترسی و اثر اجتماعی برای جامعه می‌سنجد.",
+        counter_view:
+          "دیدگاه راست می‌گوید سیاست خارجی ذاتا دولت‌محور است و اگر بیش از حد اجتماعی‌سازی شود، انسجام راهبردی و کارایی تصمیم‌گیری تضعیف می‌شود.",
+      },
+      {
+        id: "for_13",
+        question:
+          "اگر در تحلیل استقلال سیاسی گفته شود «استقلال پایدار با تنوع شریکان و کاهش وابستگی یک‌جانبه تقویت می‌شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی استقلال را با تنوع شریکان و کاهش وابستگی یک‌جانبه تعریف می‌کند و به نگاه واقع‌گرایانه نزدیک است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید تنوع شریکان مهم است، اما استقلال واقعی بدون توجه به جایگاه نابرابر کشورها در نظم جهانی کامل نمی‌شود.",
+      },
+      {
+        id: "for_14",
+        question:
+          "اگر گفته شود «در روابط بین‌الملل، دفاع از حقوق ملت‌ها فقط موضع اخلاقی نیست و به عدالت در نظم جهانی هم مربوط است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه حقوق ملت‌ها را به مسئله عدالت جهانی و ساختار نابرابر نظم بین‌الملل پیوند می‌دهد.",
+        counter_view:
+          "دیدگاه راست می‌گوید دفاع از حقوق ملت‌ها مهم است، اما سیاست خارجی باید اول با منافع ملی، ظرفیت قدرت و امکان اجرای واقعی سنجیده شود.",
+      },
+      {
+        id: "for_15",
+        question:
+          "اگر درباره توافق خارجی گفته شود «توافق خوب توافقی است که قواعد شفاف خروج، حل اختلاف و نظارت دوره‌ای داشته باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر طراحی حقوقی دقیق توافق، شفافیت رویه‌ها و قابلیت مدیریت اختلاف تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید طراحی حقوقی مهم است، اما کافی نیست و باید پیامدهای اجتماعی و توزیعی توافق هم در سنجش کیفیت آن لحاظ شود.",
+      },
+      {
+        id: "for_16",
+        question:
+          "اگر گفته شود «در سیاست خارجی، یکی از پارامترهای مهم در توسعه روابط موفق این است که شکاف‌های داخلی و خارجی را تشدید نکند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی توسعه روابط خارجی را با اثر آن بر کاهش یا تشدید شکاف‌های اجتماعی و سیاسی می‌سنجد.",
+        counter_view:
+          "دیدگاه راست می‌گوید کاهش شکاف‌ها مهم است، اما در سیاست خارجی اولویت باید حفظ منافع پایدار و قابلیت چانه‌زنی کشور باشد.",
+      },
+      {
+        id: "for_17",
+        question:
+          "اگر در تحلیل نقش دولت گفته شود «دولت در سیاست خارجی باید بیشتر معمار چارچوب‌ها و تضمین‌کننده منافع پایدار باشد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه دولت را طراح چارچوب‌های پایدار و ضامن منافع بلندمدت در روابط خارجی می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید نقش دولت مهم است، اما ارزیابی موفقیت آن باید با معیار اثر اجتماعی و توزیع پیامدها در داخل کشور همراه باشد.",
+      },
+      {
+        id: "for_18",
+        question:
+          "اگر گفته شود «ملاک ارزیابی راهبرد خارجی فقط بقای ساختار سیاسی نیست و باید ظرفیت آن برای کاهش ناامنی اجتماعی هم دیده شود»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب راهبرد خارجی را با پیامدهای اجتماعی داخلی و کاهش ناامنی اجتماعی هم می‌سنجد.",
+        counter_view:
+          "دیدگاه راست می‌گوید کاهش ناامنی اجتماعی مهم است، اما بقای ساختار سیاسی و حفظ ثبات راهبردی پیش‌شرط هر سیاست اجتماعی موفق است.",
+      },
+      {
+        id: "for_19",
+        question:
+          "اگر درباره سیاست همسایگی گفته شود «روابط پایدار با همسایگان از مسیر توافقات مرحله‌ای، قابل سنجش و مبتنی بر منافع متقابل ساخته می‌شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر گام‌های مرحله‌ای، سنجش‌پذیری و منافع متقابل در سیاست همسایگی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این چارچوب مفید است، اما باید بررسی شود منافع متقابل در عمل چگونه میان گروه‌های اجتماعی داخل کشور توزیع می‌شود.",
+      },
+      {
+        id: "for_20",
+        question:
+          "اگر گفته شود «در سیاست خارجی، قدرت ملی فقط ظرفیت نظامی و دیپلماتیک نیست و انسجام اجتماعی هم جزو آن است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه تعریف قدرت ملی را گسترش می‌دهد و انسجام اجتماعی را جزئی از توان خارجی کشور می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید انسجام اجتماعی مهم است، اما در سطح سیاست خارجی، ظرفیت دیپلماتیک و بازدارندگی همچنان ستون اصلی قدرت ملی هستند.",
+      },
     ],
   },
   {
-    id: "D04",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "رویکردی که دولت را بیشتر طراح و ناظر قواعد می‌داند تا بازیگر اصلی تولید و قیمت‌گذاری.",
-    correct_side: "right",
-    topic: "regulatory-state",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف مرز روشنی بین تنظیم‌گری دولت و اداره مستقیم بنگاه‌ها می‌گذارد.",
-    evidence_note:
-      "ترجیح دولت تنظیم‌گر بر دولت بنگاه‌دار، در سنت راست اقتصادی پررنگ‌تر است.",
-    source_refs: [
-      "Giandomenico Majone - Regulatory State",
-      "F. A. Hayek - Law, Legislation and Liberty",
+    axis_id: "national_security",
+    axis_title: "امنیت ملی",
+    axis_certainty: "medium",
+    axis_weight: 0.95,
+    items: [
+      {
+        id: "sec_01",
+        question:
+          "اگر در یک چارچوب امنیت ملی گفته شود «امنیت پایدار فقط با افزایش توان سخت حاصل نمی‌شود و به ظرفیت نهادی و اعتماد عمومی هم وابسته است»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی امنیت را فقط به توان سخت محدود نمی‌کند و ظرفیت نهادی و اعتماد عمومی را هم جزو بنیان‌های امنیت پایدار می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید ظرفیت نهادی و اعتماد عمومی مهم‌اند، اما بدون بازدارندگی موثر و ثبات در تصمیم‌گیری امنیت پایدار شکل نمی‌گیرد.",
+      },
+      {
+        id: "sec_02",
+        question:
+          "اگر گفته شود «اولویت امنیت ملی، حفظ بازدارندگی، ثبات تصمیم‌گیری و قابلیت پیش‌بینی در رفتار دولت است»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر بازدارندگی، ثبات رفتار حاکمیتی و پیش‌بینی‌پذیری به عنوان عناصر اصلی امنیت ملی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این عناصر مهم‌اند، اما اگر شکاف‌های اجتماعی و بی‌اعتمادی انباشته شوند، امنیت فقط با این شاخص‌ها پایدار نمی‌ماند.",
+      },
+      {
+        id: "sec_03",
+        question:
+          "اگر درباره امنیت داخلی گفته شود «کاهش شکاف‌های اجتماعی و اقتصادی بخشی از راهبرد امنیت ملی است، نه صرفا یک سیاست رفاهی»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه شکاف‌های اجتماعی و اقتصادی را منبع بالقوه ناامنی می‌بیند و کاهش آن‌ها را جزئی از راهبرد امنیتی می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید کاهش شکاف‌ها مهم است، اما راهبرد امنیت ملی باید اول بر نظم حقوقی، ظرفیت اجرا و کنترل تهدیدهای مستقیم تکیه کند.",
+      },
+      {
+        id: "sec_04",
+        question:
+          "اگر گفته شود «امنیت ملی زمانی تقویت می‌شود که قواعد حقوقی روشن باشد و تصمیم‌های حاکمیتی از رویه‌های پایدار تبعیت کنند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی امنیت را به قاعده‌مندی حقوقی، رویه‌های پایدار و پیش‌بینی‌پذیری تصمیم‌های حاکمیتی پیوند می‌دهد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید قواعد حقوقی روشن لازم است، اما باید سنجید این قواعد در عمل برای همه گروه‌های اجتماعی دسترس‌پذیر و عادلانه هستند یا نه.",
+      },
+      {
+        id: "sec_05",
+        question:
+          "اگر در تحلیل تهدیدها گفته شود «ناامنی فقط از مرزها نمی‌آید و می‌تواند از نابرابری انباشته و حذف اجتماعی هم تولید شود»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه تهدید را فقط بیرونی یا مرزی نمی‌بیند و نابرابری و حذف اجتماعی را نیز مولد ناامنی می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید این تحلیل مهم است، اما در سیاست امنیتی باید تهدیدهای مستقیم، ساختار فرماندهی و نظم اجرایی اولویت عملیاتی داشته باشند.",
+      },
+      {
+        id: "sec_06",
+        question:
+          "اگر گفته شود «در سیاست امنیتی، تمرکز اصلی باید روی پیشگیری نهادی و حفظ نظم باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر پیشگیری نهادی، نظم و ظرفیت اجرایی دولت در مدیریت تهدیدها تاکید می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید حفظ نظم لازم است، اما اگر ریشه‌های اجتماعی تعارض نادیده گرفته شوند، پیشگیری نهادی کامل نخواهد بود.",
+      },
+      {
+        id: "sec_07",
+        question:
+          "اگر درباره تاب‌آوری ملی گفته شود «جامعه‌ای تاب‌آورتر است که دسترسی گروه‌های مختلف به خدمات عادلانه باشد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی تاب‌آوری ملی را با عدالت در دسترسی به خدمات و کاهش شکاف میان گروه‌ها پیوند می‌دهد.",
+        counter_view:
+          "دیدگاه راست می‌گوید دسترسی عادلانه مهم است، اما تاب‌آوری ملی به نظم نهادی، فرماندهی روشن و ظرفیت اجرای تصمیم هم وابسته است.",
+      },
+      {
+        id: "sec_08",
+        question:
+          "اگر گفته شود «تاب‌آوری ملی به کیفیت زنجیره تصمیم‌گیری، تفکیک مسئولیت و فرماندهی روشن هم وابسته است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه تاب‌آوری را نتیجه کیفیت ساختار تصمیم‌گیری، تفکیک وظایف و فرماندهی مشخص می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این عوامل مهم‌اند، اما بدون کاهش احساس حذف و دسترسی نابرابر، تاب‌آوری اجتماعی کامل نمی‌شود.",
+      },
+      {
+        id: "sec_09",
+        question:
+          "اگر در امنیت اقتصادی گفته شود «افزایش رفاه خانوارها می‌تواند ریسک بی‌ثباتی داخلی را پایین بیاورد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب رفاه خانوار را یک مولفه امنیتی می‌بیند و آن را در کاهش بی‌ثباتی داخلی موثر می‌داند.",
+        counter_view:
+          "دیدگاه راست می‌گوید افزایش رفاه مهم است، اما رفاه پایدار بدون ثبات حقوقی، مالکیت و محیط قابل پیش‌بینی اقتصادی شکل نمی‌گیرد.",
+      },
+      {
+        id: "sec_10",
+        question:
+          "اگر گفته شود «امنیت اقتصادی بلندمدت بدون ثبات مالکیت، قرارداد و قواعد سرمایه‌گذاری شکل نمی‌گیرد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی امنیت اقتصادی را به ثبات حقوق مالکیت، قراردادها و قواعد سرمایه‌گذاری گره می‌زند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این پیش‌شرط‌ها مهم‌اند، اما امنیت اقتصادی باید با معیار توزیع ریسک و دسترسی گروه‌های مختلف به فرصت هم سنجیده شود.",
+      },
+      {
+        id: "sec_11",
+        question:
+          "اگر درباره انسجام ملی گفته شود «انسجام فقط از هم‌صدایی رسمی ساخته نمی‌شود و نیازمند کاهش احساس حذف در گروه‌های اجتماعی است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه انسجام ملی را به کاهش احساس حذف و تجربه واقعی مشارکت در گروه‌های اجتماعی مختلف پیوند می‌دهد.",
+        counter_view:
+          "دیدگاه راست می‌گوید کاهش احساس حذف مهم است، اما انسجام پایدار بدون نهادهای قابل اتکا و اجرای یکسان قانون تثبیت نمی‌شود.",
+      },
+      {
+        id: "sec_12",
+        question:
+          "اگر گفته شود «انسجام ملی پایدار نیازمند نهادهای قابل اتکا و اجرای یکسان قانون در سراسر کشور است»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب انسجام را محصول نهادهای باثبات و اجرای برابر قانون در کل کشور می‌داند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید اجرای یکسان قانون مهم است، اما باید دید آیا گروه‌های مختلف توان واقعی استفاده از این حقوق و قوانین را دارند یا نه.",
+      },
+      {
+        id: "sec_13",
+        question:
+          "اگر در تحلیل امنیت مرزی گفته شود «سیاست مرزی باید همزمان پیامدهای اجتماعی و معیشتی برای ساکنان مناطق مرزی را هم بسنجد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی امنیت مرزی را فقط مسئله کنترلی نمی‌بیند و اثرات اجتماعی و معیشتی بر ساکنان مرزی را هم معیار می‌گیرد.",
+        counter_view:
+          "دیدگاه راست می‌گوید این پیامدها مهم‌اند، اما موفقیت سیاست مرزی در درجه اول به قواعد روشن، هماهنگی نهادی و ظرفیت کنترل وابسته است.",
+      },
+      {
+        id: "sec_14",
+        question:
+          "اگر گفته شود «مدیریت مرز زمانی موفق است که قواعد روشن، پاسخ‌گویی نهادی و هماهنگی بین دستگاهی داشته باشد»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه مدیریت مرز را بر پایه شفافیت قواعد، پاسخ‌گویی نهادی و هماهنگی دستگاه‌ها تعریف می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این مولفه‌ها مهم‌اند، اما سیاست مرزی باید همزمان اثرات اجتماعی و اقتصادی بر جمعیت محلی را هم در نظر بگیرد.",
+      },
+      {
+        id: "sec_15",
+        question:
+          "اگر درباره تهدیدات داخلی گفته شود «تقویت نهادهای میانجی و کانال‌های رسمی گفت‌وگو می‌تواند هزینه تعارض را کاهش دهد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب بر نقش نهادهای میانجی و گفت‌وگوی رسمی در کاهش تعارض و مدیریت اختلافات داخلی تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید گفت‌وگو مهم است، اما کاهش تهدیدات داخلی بدون نقش قوی دولت در اجرای قواعد و حفظ نظم پایدار نمی‌شود.",
+      },
+      {
+        id: "sec_16",
+        question:
+          "اگر گفته شود «برای کاهش تهدیدات داخلی، دولت باید نقش داور قواعد را برای ظرفیت اجرایی بالا ایفا کند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی نقش دولت را در داوری قواعد و تقویت ظرفیت اجرایی برای مهار تهدیدات داخلی برجسته می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید نقش دولت مهم است، اما اگر کانال‌های نمایندگی و نهادهای میانجی تقویت نشوند، تهدیدات داخلی فقط به صورت مقطعی کنترل می‌شوند.",
+      },
+      {
+        id: "sec_17",
+        question:
+          "اگر در امنیت ملی گفته شود «شاخص ارزیابی فقط کنترل بحران نیست و باید دید کدام سیاست‌ها شکاف قدرت و بی‌اعتمادی را کم کرده‌اند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه ارزیابی امنیت را از مدیریت بحران فراتر می‌برد و کاهش شکاف قدرت و بی‌اعتمادی را معیار می‌گیرد.",
+        counter_view:
+          "دیدگاه راست می‌گوید این شاخص‌ها مهم‌اند، اما کیفیت فرماندهی، انسجام تصمیم و قابلیت اجرای سیاست‌ها نیز باید در مرکز ارزیابی بمانند.",
+      },
+      {
+        id: "sec_18",
+        question:
+          "اگر گفته شود «شاخص ارزیابی امنیت ملی باید شامل کیفیت فرماندهی و قابلیت اجرای تصمیم‌ها هم باشد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر کیفیت فرماندهی، انسجام ساختار تصمیم‌گیری و توان اجرای تصمیم‌ها در سنجش امنیت ملی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این معیارها لازم‌اند، اما بدون سنجش اثر سیاست‌ها بر شکاف‌های اجتماعی و اعتماد عمومی، ارزیابی امنیت ناقص می‌ماند.",
+      },
+      {
+        id: "sec_20",
+        question:
+          "اگر گفته شود «راهبرد امنیت ملی باید بر بازدارندگی، نظم حقوقی و تقسیم کار نهادی روشن تکیه کند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی راهبرد امنیت ملی را بر سه ستون بازدارندگی، قاعده‌مندی حقوقی و تقسیم کار نهادی روشن بنا می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این ستون‌ها مهم‌اند، اما راهبرد امنیت ملی زمانی پایدار می‌شود که کاهش شکاف اجتماعی و اعتماد عمومی هم در متن آن باشد.",
+      },
     ],
   },
   {
-    id: "D05",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "رویکردی که در بحران، ایجاد شبکه ایمنی حداقلی برای بیکاران و خانوارهای کم‌درآمد را وظیفه عمومی می‌داند.",
-    correct_side: "left",
-    topic: "social-protection",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این تعریف، سیاست حمایتی نقش سپر اجتماعی در شرایط بی‌ثبات دارد.",
-    evidence_note:
-      "محوریت شبکه ایمنی اجتماعی برای گروه‌های آسیب‌پذیر، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "ILO social protection reports",
-      "T.H. Marshall - Social Rights",
-    ],
-  },
-  {
-    id: "D06",
-    type: "definition",
-    domain: "conceptual",
-    era: null,
-    text: "رویکردی که کاهش مقررات را زمانی مفید می‌داند که هم‌زمان چارچوب حقوقی قابل پیش‌بینی حفظ شود.",
-    correct_side: "right",
-    topic: "deregulation-conditions",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف مقررات‌زدایی را به شرط حفظ قاعده حقوقی و قابلیت پیش‌بینی معتبر می‌داند.",
-    evidence_note:
-      "مقررات‌زدایی مشروط به پایداری حقوقی، در سنت راست بیشتر دیده می‌شود.",
-    source_refs: [
-      "OECD Regulatory Policy",
-      "Milton Friedman - Capitalism and Freedom",
-    ],
-  },
-  {
-    id: "D07",
-    type: "definition",
-    domain: "historical",
-    era: "constitutional",
-    text: "برداشتی از برنامه سیاسی مشروطه که افزایش وزن اصناف و نیروی کار شهری را برای تعادل قدرت ضروری می‌دانست.",
-    correct_side: "left",
-    topic: "constitutional-labor",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف نقش نیروهای اجتماعی پایین‌دست را در توازن قدرت برجسته می‌کند.",
-    evidence_note:
-      "تاکید بر نمایندگی صنفی و نیروی کار شهری، در طبقه‌بندی تحلیلی به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Janet Afary - Constitutional Revolution",
-      "Mangol Bayat - Iran's First Revolution",
-    ],
-  },
-  {
-    id: "D08",
-    type: "definition",
-    domain: "historical",
-    era: "constitutional",
-    text: "برداشتی از مجلس مشروطه که آن را ابزار اصلاح بار مالیاتی و گسترش خدمات شهری برای گروه‌های کم‌برخوردار می‌دید.",
-    correct_side: "left",
-    topic: "constitutional-fiscal",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "در این تعریف، مجلس ابزار مداخله برای اصلاح توزیع امکانات شهری تلقی می‌شود.",
-    evidence_note:
-      "تاکید بر اصلاح توزیع بار مالی و خدمات شهری به نفع گروه‌های ضعیف‌تر، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Constitutional Assembly debates (selected)",
-      "Nikki Keddie - Modern Iran",
-    ],
-  },
-  {
-    id: "D09",
-    type: "definition",
-    domain: "historical",
-    era: "oil-nationalization",
-    text: "برداشتی از راهبرد اقتصادی دهه ۱۳۳۰ که ثبات روابط حقوقی خارجی و پیش‌بینی‌پذیری قواعد را پیش‌شرط رشد می‌دانست.",
-    correct_side: "right",
-    topic: "oil-contract-stability",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف بر ثبات حقوقی محیط اقتصاد برای رشد پایدار تاکید دارد.",
-    evidence_note:
-      "مرکزیت پیش‌بینی‌پذیری قواعد و روابط حقوقی در رشد، با سنت راست قرابت بیشتری دارد.",
-    source_refs: [
-      "Iran oil concession history (selected)",
-      "Institutional economics references",
-    ],
-  },
-  {
-    id: "D10",
-    type: "definition",
-    domain: "historical",
-    era: "oil-nationalization",
-    text: "برداشتی از سیاست نفت که نقش دولت را بیشتر تنظیم‌گر قواعد و تعهدات می‌خواست تا توزیع‌کننده مستقیم درآمد.",
-    correct_side: "right",
-    topic: "oil-regulatory-role",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "اینجا دولت بیشتر نگهبان چارچوب حقوقی بازار انرژی فرض می‌شود.",
-    evidence_note:
-      "تعریف تنظیم‌گرانه از نقش دولت در اقتصاد انرژی، به سنت راست نزدیک‌تر است.",
-    source_refs: [
-      "Comparative petroleum governance studies",
-      "Regulatory state literature",
-    ],
-  },
-  {
-    id: "D11",
-    type: "definition",
-    domain: "historical",
-    era: "post-1979",
-    text: "برداشتی از سیاست اقتصادی پس از انقلاب که کاهش بنگاه‌داری دولت و تقویت رقابت تولیدی را مسیر اصلاح می‌دانست.",
-    correct_side: "right",
-    topic: "postrevolution-market-reform",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف اصلاح را از مسیر رقابتی‌تر شدن تولید و کاهش تصدی مستقیم دولت می‌بیند.",
-    evidence_note:
-      "ارجحیت رقابت تولیدی نسبت به تصدی‌گری دولت، با سنت راست همخوانی بیشتری دارد.",
-    source_refs: [
-      "Iran industrial policy studies",
-      "Market transition literature",
-    ],
-  },
-  {
-    id: "D12",
-    type: "definition",
-    domain: "historical",
-    era: "reconstruction-privatization",
-    text: "برداشتی از بازسازی پس از جنگ که جبران فشار معیشتی مزدبگیران و مهار تمرکز ثروت را شرط پایداری اصلاحات می‌دانست.",
-    correct_side: "left",
-    topic: "reconstruction-welfare",
-    difficulty: "medium",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف می‌گوید اصلاح اقتصادی بدون سپر اجتماعی می‌تواند ناپایدار شود.",
-    evidence_note:
-      "پیوند پایداری اصلاحات با جبران فشار معیشتی گروه‌های پایین‌تر، به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Post-war Iran social policy papers",
-      "ILO and UNDP reports on adjustment costs",
-    ],
-  },
-  {
-    id: "D13",
-    type: "definition",
-    domain: "historical",
-    era: "reform-civic",
-    text: "برداشتی از سیاست اجتماعی معاصر که موفقیت را با کاهش فاصله دسترسی گروه‌های مختلف به آموزش و سلامت می‌سنجد.",
-    correct_side: "left",
-    topic: "reform-equality",
-    difficulty: "easy",
-    axis: null, // TODO: set axis to one of economic|domestic_policy|foreign_policy|historical|national_security
-    correct_view: {
-      side: "left",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    counter_view: {
-      side: "right",
-      summary: "", // TODO
-      key_distinction: "", // TODO
-    },
-    learning_links: [], // TODO
-    explanation:
-      "این تعریف، معیار ارزیابی سیاست را عدالت دسترسی و همگرایی فرصت‌ها قرار می‌دهد.",
-    evidence_note:
-      "معیار قرار دادن کاهش شکاف دسترسی به خدمات پایه، در دسته‌بندی تحلیلی به سنت چپ نزدیک‌تر است.",
-    source_refs: [
-      "Social policy evaluation frameworks",
-      "Iran education and health inequality studies",
+    axis_id: "iran_history",
+    axis_title: "تاریخ ایران",
+    axis_certainty: "medium",
+    axis_weight: 0.92,
+    items: [
+      {
+        id: "his_01",
+        question:
+          "اگر درباره مشروطه گفته شود «اولویت اصلی، محدود شدن قدرت مطلقه از مسیر قانون و مجلس بود»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر محدودسازی قدرت مطلقه از مسیر قانون و نهاد مجلس تاکید دارد و محور آن نهادسازی حقوقی و مهار قدرت است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید محدود شدن قدرت مطلقه مهم است، اما بدون گسترش واقعی دسترسی گروه‌های مختلف اجتماعی به قدرت، اصلاح سیاسی ناقص می‌ماند.",
+      },
+      {
+        id: "his_02",
+        question:
+          "اگر در تحلیل بخشی از نیروهای مشروطه‌خواه گفته شود «اصلاح سیاسی بدون گسترش دسترسی و برابری آحاد جامعه به قدرت ناقص می‌ماند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه اصلاح سیاسی را فقط در سطح قانون و نهاد متوقف نمی‌کند و بر گسترش دسترسی و برابری در قدرت تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید گسترش دسترسی مهم است، اما نقطه شروع اصلاح پایدار، تثبیت قانون، مجلس و محدود شدن قدرت خودسرانه است.",
+      },
+      {
+        id: "his_03",
+        question:
+          "اگر درباره جبهه ملی گفته شود «استقلال سیاسی باید با حاکمیت ملی بر منابع و تصمیم‌گیری داخلی گره بخورد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی استقلال سیاسی را با کنترل ملی بر منابع و تصمیم‌گیری داخلی پیوند می‌دهد و به عدالت در مالکیت و حاکمیت جمعی نزدیک است.",
+        counter_view:
+          "دیدگاه راست می‌گوید حاکمیت ملی مهم است، اما باید همزمان بر چارچوب‌های حقوقی پایدار، قراردادهای شفاف و ثبات نهادی نیز تاکید شود.",
+      },
+      {
+        id: "his_04",
+        question:
+          "اگر در تحلیل نهضت ملی شدن نفت گفته شود «مسئله فقط درآمد نبود، بلکه کنترل حقوقی و سیاسی قراردادهای خارجی هم بود»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه بر کنترل حقوقی و سیاسی قراردادها، حاکمیت قانون و تنظیم رابطه با طرف خارجی بر پایه قواعد روشن تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید کنترل حقوقی مهم است، اما باید سنجید منافع حاصل از منابع ملی چگونه به رفاه عمومی و کاهش نابرابری اجتماعی تبدیل می‌شود.",
+      },
+      {
+        id: "his_05",
+        question:
+          "اگر درباره ملی شدن نفت گفته شود «منابع طبیعی باید در خدمت افزایش رفاه اجتماعی قرار بگیرند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این چارچوب منابع طبیعی را ابزار افزایش رفاه اجتماعی می‌بیند و بر کارکرد توزیعی و عمومی آن تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید رفاه اجتماعی مهم است، اما استفاده پایدار از منابع طبیعی نیازمند قواعد حقوقی روشن، مدیریت نهادی و قراردادهای قابل اتکاست.",
+      },
+      {
+        id: "his_06",
+        question:
+          "اگر در تحلیل کودتای ۲۸ مرداد گفته شود «بی‌ثباتی قواعد حکمرانی و مداخله در روند قانونی، هزینه بلندمدت نهادی برای کشور ساخت»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر هزینه نهادی بی‌ثباتی قواعد و مداخله در روند قانونی تاکید دارد و مسئله را در سطح تخریب نظم حقوقی می‌بیند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این تحلیل درست است، اما باید همزمان پیامد حذف نیروهای اجتماعی و توزیع نابرابر قدرت پس از آن هم بررسی شود.",
+      },
+      {
+        id: "his_07",
+        question:
+          "اگر درباره ارزیابی پیامدهای ۲۸ مرداد گفته شود «باید دید کدام نیروهای اجتماعی از مشارکت سیاسی حذف شدند و این حذف چه اثری بر نابرابری قدرت داشت»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه پیامد تاریخی را از منظر حذف نیروهای اجتماعی و نابرابری قدرت می‌سنجد و بر توزیع مشارکت سیاسی تمرکز دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید این بعد مهم است، اما برای فهم پیامدهای بلندمدت باید تخریب حاکمیت قانون و بی‌ثباتی قواعد حکمرانی را هم در مرکز تحلیل گذاشت.",
+      },
+      {
+        id: "his_08",
+        question:
+          "اگر درباره حزب توده گفته شود «تحلیل سیاست و اقتصاد را بر محور طبقه، کار، و نابرابری ساختاری می‌چرخاند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی مستقیما از مفاهیم طبقه، کار و نابرابری ساختاری استفاده می‌کند و به تحلیل چپ نزدیک است.",
+        counter_view:
+          "دیدگاه راست می‌گوید توجه به نابرابری مهم است، اما تحلیل سیاسی نباید به وابستگی بیرونی یا تضعیف استقلال تصمیم‌گیری ملی منجر شود.",
+      },
+      {
+        id: "his_09",
+        question:
+          "اگر در نقد حزب توده گفته شود «وابستگی تحلیلی یا سیاسی به بلوک‌های بیرونی می‌تواند استقلال تصمیم‌گیری ملی را تضعیف کند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نقد بر استقلال تصمیم‌گیری ملی، پرهیز از وابستگی و اولویت دادن به حاکمیت سیاسی داخلی تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید استقلال ملی مهم است، اما نقد یک جریان نباید باعث حذف مسئله نابرابری ساختاری، کار و عدالت اجتماعی از تحلیل شود.",
+      },
+      {
+        id: "his_10",
+        question:
+          "اگر درباره نهضت آزادی گفته شود «اصلاح سیاسی باید از مسیر قانون، نهاد، و محدود کردن قدرت پیش برود نه صرفا بسیج توده‌ای»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب بر قانون، نهاد و محدودسازی قدرت به عنوان مسیر اصلاح سیاسی تاکید دارد و از منطق نهادی دفاع می‌کند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این مسیر مهم است، اما اگر شکاف‌های اجتماعی و عدالت واقعی نادیده گرفته شود، آزادی سیاسی پایدار نمی‌ماند.",
+      },
+      {
+        id: "his_11",
+        question:
+          "اگر در تحلیل نهضت آزادی گفته شود «آزادی سیاسی بدون توجه به عدالت اجتماعی و شکاف‌های واقعی جامعه پایدار نمی‌ماند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه آزادی سیاسی را به عدالت اجتماعی و شکاف‌های واقعی جامعه پیوند می‌دهد و بر بستر اجتماعی آزادی تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید عدالت اجتماعی مهم است، اما پایداری آزادی سیاسی ابتدا به تثبیت قانون، نهاد و محدود بودن قدرت وابسته است.",
+      },
+      {
+        id: "his_12",
+        question:
+          "اگر درباره مجاهدین خلق در دوره مبارزه گفته شود «تغییر سیاسی را با زبان ضد امپریالیستی و عدالت اجتماعی صورت‌بندی می‌کردند»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی از زبان ضد امپریالیستی و عدالت اجتماعی استفاده می‌کند که به چارچوب‌های چپ نزدیک‌تر است.",
+        counter_view:
+          "دیدگاه راست می‌گوید حتی با این زبان، تغییر پایدار سیاسی بدون نهادسازی حقوقی و قواعد قابل پیش‌بینی به بی‌ثباتی می‌رسد.",
+      },
+      {
+        id: "his_13",
+        question:
+          "اگر در تحلیل جریان‌های مسلحانه گفته شود «تغییر پایدار بدون نهادسازی حقوقی و قواعد قابل پیش‌بینی، به بازتولید بی‌ثباتی می‌رسد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این نگاه بر نهادسازی حقوقی و قواعد قابل پیش‌بینی به عنوان شرط تغییر پایدار تاکید دارد و نسبت به بی‌ثباتی حساس است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید نقد بی‌ثباتی درست است، اما باید همزمان فهمید چه نابرابری‌ها و انسدادهایی زمینه گرایش به سیاست رادیکال را ساخته‌اند.",
+      },
+      {
+        id: "his_14",
+        question:
+          "اگر درباره سال‌های نخست پس از ۵۷ گفته شود «گسترش نهادهای حمایتی در شرایط بحران و جنگ، اولویت سیاست داخلی بود»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی اولویت را به نهادهای حمایتی و پوشش اجتماعی در شرایط بحران می‌دهد و به منطق چپ نزدیک است.",
+        counter_view:
+          "دیدگاه راست می‌گوید حمایت در بحران مهم است، اما پایداری بلندمدت نیازمند قاعده‌مندی نهادی، کارایی و ثبات اقتصادی نیز هست.",
+      },
+      {
+        id: "his_15",
+        question:
+          "اگر درباره دوره بازسازی پس از جنگ گفته شود «برای احیای تولید، باید ثبات و امکان پیش‌بینی اقتصادی تقویت می‌شد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این چارچوب احیای تولید را به ثبات و پیش‌بینی‌پذیری اقتصادی گره می‌زند و بر نظم نهادی و محیط باثبات تاکید دارد.",
+        counter_view:
+          "دیدگاه چپ می‌گوید ثبات مهم است، اما بازسازی بدون سپرهای رفاهی و توجه به نابرابری می‌تواند شکاف اجتماعی را عمیق‌تر کند.",
+      },
+      {
+        id: "his_16",
+        question:
+          "اگر در نقد سیاست‌های تعدیل گفته شود «رشد بدون سپر رفاهی می‌تواند شکاف طبقاتی و ناامنی اجتماعی را تشدید کند»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نقد رشد اقتصادی را بدون سپر رفاهی ناکافی می‌داند و بر پیامدهای طبقاتی و اجتماعی سیاست تاکید می‌کند.",
+        counter_view:
+          "دیدگاه راست می‌گوید سپر رفاهی مهم است، اما بدون ثبات قواعد، سرمایه‌گذاری و رشد پایدار، خود منابع لازم برای حمایت اجتماعی هم تضعیف می‌شود.",
+      },
+      {
+        id: "his_17",
+        question:
+          "اگر درباره دوره اصلاحات گفته شود «جامعه مدنی و نهادهای میانجی، ابزار توزیع متوازن‌تر قدرت در سیاست داخلی هستند»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این صورت‌بندی بر جامعه مدنی و نهادهای میانجی به عنوان ابزار کاهش شکاف قدرت و گسترش نمایندگی تاکید دارد.",
+        counter_view:
+          "دیدگاه راست می‌گوید نهادهای میانجی مهم‌اند، اما اثر پایدار آن‌ها به چارچوب حقوقی روشن و اجرای قابل اتکای قانون وابسته است.",
+      },
+      {
+        id: "his_18",
+        question:
+          "اگر در تحلیل اصلاحات نهادی گفته شود «کاهش رویه‌های مبهم و تقویت حاکمیت قانون، هزینه تعامل اقتصادی و سیاسی را پایین می‌آورد»، این چارچوب به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این تحلیل بر شفاف‌سازی رویه‌ها و تقویت حاکمیت قانون برای کاهش هزینه تعامل تاکید دارد و به منطق نهادی راست نزدیک است.",
+        counter_view:
+          "دیدگاه چپ می‌گوید این اصلاحات لازم‌اند، اما باید همزمان سنجید چه گروه‌هایی عملا از این تعاملات نفع می‌برند یا حذف می‌شوند.",
+      },
+      {
+        id: "his_19",
+        question:
+          "اگر درباره خصوصی‌سازی در دهه‌های اخیر گفته شود «مسئله اصلی فقط واگذاری نیست و بدون شفافیت، انتقال رانت رخ می‌دهد»، این نگاه به کدام گرایش نزدیک‌تر است؟",
+        answer: "راست",
+        correct_view:
+          "این صورت‌بندی بر کیفیت واگذاری، شفافیت و جلوگیری از رانت در فرایند خصوصی‌سازی تاکید دارد و مسئله را در سطح قواعد و رقابت می‌بیند.",
+        counter_view:
+          "دیدگاه چپ می‌گوید شفافیت ضروری است، اما باید پیامد خصوصی‌سازی بر توزیع فرصت، قدرت اقتصادی و شکاف‌های اجتماعی هم ارزیابی شود.",
+      },
+      {
+        id: "his_20",
+        question:
+          "اگر در ارزیابی تاریخی دولت‌های معاصر گفته شود «معیار قضاوت فقط رشد یا ثبات نیست و باید دید هر دوره چه اثری بر جامعه گذاشته است»، این صورت‌بندی به کدام گرایش نزدیک‌تر است؟",
+        answer: "چپ",
+        correct_view:
+          "این نگاه ارزیابی تاریخی را از شاخص‌های کلان فراتر می‌برد و اثر واقعی هر دوره بر جامعه و توزیع پیامدها را معیار می‌گیرد.",
+        counter_view:
+          "دیدگاه راست می‌گوید اثر اجتماعی مهم است، اما رشد، ثبات نهادی و پیش‌بینی‌پذیری نیز پایه‌های اصلی قضاوت درباره عملکرد دولت‌ها هستند.",
+      },
     ],
   },
 ];
 
-const EXPECTED_COUNTS = {
-  total: 40,
-  domain: { conceptual: 20, historical: 20 },
-  type: { concept: 14, statement: 13, definition: 13 },
-  side: { left: 20, right: 20 },
-  difficulty: { easy: 20, medium: 20 },
-  eras: {
-    constitutional: 4,
-    "oil-nationalization": 4,
-    "post-1979": 4,
-    "reconstruction-privatization": 4,
-    "reform-civic": 4,
-  },
+const mapAnswerToSide = (value) => {
+  const normalized = String(value || "").trim();
+  return SIDE_MAP[normalized] || null;
+};
+
+const toQuestionRecord = (axis, item) => {
+  const normalizedAxisId = AXIS_ID_ALIASES[axis.axis_id] || axis.axis_id;
+  const correctSide = mapAnswerToSide(item.answer);
+  const counterSide = correctSide === "left" ? "right" : "left";
+
+  return {
+    id: item.id,
+    type: "concept",
+    domain: "conceptual",
+    era: null,
+    text: item.question,
+    correct_side: correctSide,
+    topic: normalizedAxisId,
+    difficulty: "medium",
+    axis: normalizedAxisId,
+    axis_title: String(axis.axis_title || normalizedAxisId || ""),
+    certainty: ALLOWED_CERTAINTY.has(axis.axis_certainty)
+      ? axis.axis_certainty
+      : "medium",
+    weight: normalizeAxisWeight(axis.axis_weight),
+    correct_view: {
+      side: correctSide,
+      summary: String(item.correct_view || ""),
+      key_distinction: "", // TODO
+    },
+    counter_view: {
+      side: counterSide,
+      summary: String(item.counter_view || ""),
+      key_distinction: "", // TODO
+    },
+    explanation: String(item.correct_view || ""),
+    evidence_note: "", // TODO
+    source_refs: [], // TODO
+  };
+};
+
+const QUESTIONS = AXIS_BANKS.flatMap((axis) =>
+  (axis.items || []).map((item) => toQuestionRecord(axis, item)),
+);
+
+const EXPECTED_FINAL = {
+  total: 100,
+  per_axis: 20,
 };
 
 const validateQuestions = (questions) => {
   const ids = new Set();
-
-  const isAxisPlaceholder = (value) => value === null || value === "";
-
-  const validateLearningLinks = (questionId, learningLinks) => {
-    if (!Array.isArray(learningLinks)) {
-      throw new Error(`learning_links نامعتبر برای سوال ${questionId}`);
-    }
-
-    for (const link of learningLinks) {
-      if (!link || typeof link !== "object") {
-        throw new Error(`learning_links item نامعتبر برای سوال ${questionId}`);
-      }
-
-      const { title, url, type } = link;
-      if (typeof title !== "string") {
-        throw new Error(`learning_links.title نامعتبر برای سوال ${questionId}`);
-      }
-      if (typeof url !== "string") {
-        throw new Error(`learning_links.url نامعتبر برای سوال ${questionId}`);
-      }
-      if (!ALLOWED_LINK_TYPES.has(type)) {
-        throw new Error(`learning_links.type نامعتبر برای سوال ${questionId}`);
-      }
-    }
-  };
 
   const validateView = (questionId, view, fieldName) => {
     if (!view || typeof view !== "object") {
@@ -1308,9 +1158,11 @@ const validateQuestions = (questions) => {
       domain,
       era,
       axis,
+      axis_title,
+      certainty,
+      weight,
       correct_view,
       counter_view,
-      learning_links,
       evidence_note,
       source_refs,
     } = question;
@@ -1335,37 +1187,50 @@ const validateQuestions = (questions) => {
     if (!ALLOWED_DOMAINS.has(domain)) {
       throw new Error(`domain نامعتبر برای سوال ${id}`);
     }
-    if (!Object.hasOwn(question, "axis")) {
-      throw new Error(`axis برای سوال ${id} تعریف نشده است.`);
-    }
-    // TODO: بعد از تکمیل مقدار axis برای کل بانک، حالت placeholder را حذف کن.
-    if (!isAxisPlaceholder(axis) && !ALLOWED_AXES.has(axis)) {
+    if (!ALLOWED_AXES.has(axis)) {
       throw new Error(`axis نامعتبر برای سوال ${id}`);
+    }
+    if (!axis_title || typeof axis_title !== "string") {
+      throw new Error(`axis_title نامعتبر برای سوال ${id}`);
+    }
+    if (!ALLOWED_CERTAINTY.has(certainty)) {
+      throw new Error(`certainty نامعتبر برای سوال ${id}`);
+    }
+    if (!Number.isFinite(weight)) {
+      throw new Error(`weight نامعتبر برای سوال ${id}`);
+    }
+    if (weight < AXIS_WEIGHT_RANGE.min || weight > AXIS_WEIGHT_RANGE.max) {
+      throw new Error(
+        `weight خارج از بازه برای سوال ${id}. min=${AXIS_WEIGHT_RANGE.min} max=${AXIS_WEIGHT_RANGE.max} actual=${weight}`,
+      );
     }
 
     if (domain === "conceptual" && era !== null) {
       throw new Error(`era برای سوال مفهومی ${id} باید null باشد.`);
     }
-    if (domain === "historical" && !ALLOWED_ERAS.has(era)) {
-      throw new Error(`era نامعتبر برای سوال تاریخی ${id}`);
+
+    if (!text || typeof text !== "string") {
+      throw new Error(`text نامعتبر برای سوال ${id}`);
     }
 
-    if (!text || !explanation || !topic || !evidence_note) {
-      throw new Error(`فیلدهای متنی سوال ${id} ناقص است.`);
+    if (typeof explanation !== "string") {
+      throw new Error(`explanation نامعتبر برای سوال ${id}`);
     }
-    if (!Object.hasOwn(question, "correct_view")) {
-      throw new Error(`correct_view برای سوال ${id} تعریف نشده است.`);
+
+    if (!topic || typeof topic !== "string") {
+      throw new Error(`topic نامعتبر برای سوال ${id}`);
     }
-    if (!Object.hasOwn(question, "counter_view")) {
-      throw new Error(`counter_view برای سوال ${id} تعریف نشده است.`);
+
+    if (typeof evidence_note !== "string") {
+      throw new Error(`evidence_note نامعتبر برای سوال ${id}`);
     }
-    if (!Object.hasOwn(question, "learning_links")) {
-      throw new Error(`learning_links برای سوال ${id} تعریف نشده است.`);
+
+    if (!Array.isArray(source_refs)) {
+      throw new Error(`source_refs نامعتبر برای سوال ${id}`);
     }
 
     validateView(id, correct_view, "correct_view");
     validateView(id, counter_view, "counter_view");
-    validateLearningLinks(id, learning_links);
 
     if (correct_view.side !== correct_side) {
       throw new Error(`correct_view.side برای سوال ${id} باید برابر correct_side باشد.`);
@@ -1374,70 +1239,48 @@ const validateQuestions = (questions) => {
     if (counter_view.side === correct_side) {
       throw new Error(`counter_view.side برای سوال ${id} نباید برابر correct_side باشد.`);
     }
-
-    if (
-      !Array.isArray(source_refs) ||
-      source_refs.length === 0 ||
-      source_refs.some((item) => typeof item !== "string" || !item.trim())
-    ) {
-      throw new Error(`source_refs نامعتبر برای سوال ${id}`);
-    }
   }
 };
 
 const validateDistribution = (questions) => {
   const counts = {
     total: questions.length,
-    domain: { conceptual: 0, historical: 0 },
     axis: {
       economic: 0,
       domestic_policy: 0,
       foreign_policy: 0,
       historical: 0,
       national_security: 0,
-      unassigned: 0,
-    },
-    type: { concept: 0, statement: 0, definition: 0 },
-    side: { left: 0, right: 0 },
-    difficulty: { easy: 0, medium: 0 },
-    eras: {
-      constitutional: 0,
-      "oil-nationalization": 0,
-      "post-1979": 0,
-      "reconstruction-privatization": 0,
-      "reform-civic": 0,
     },
   };
 
   for (const question of questions) {
-    counts.domain[question.domain] += 1;
-    if (ALLOWED_AXES.has(question.axis)) {
-      counts.axis[question.axis] += 1;
-    } else {
-      counts.axis.unassigned += 1;
-    }
-    counts.type[question.type] += 1;
-    counts.side[question.correct_side] += 1;
-    counts.difficulty[question.difficulty] += 1;
-
-    if (question.domain === "historical" && question.era) {
-      counts.eras[question.era] += 1;
-    }
+    counts.axis[question.axis] += 1;
   }
 
-  if (counts.total !== EXPECTED_COUNTS.total) {
+  if (counts.total === 0) {
+    throw new Error("بانک سوال خالی است.");
+  }
+
+  if (counts.total > EXPECTED_FINAL.total) {
     throw new Error(
-      `تعداد کل سوال‌ها نامعتبر است. expected=${EXPECTED_COUNTS.total} actual=${counts.total}`,
+      `تعداد کل سوال‌ها از سقف نسخه نهایی بیشتر است. max=${EXPECTED_FINAL.total} actual=${counts.total}`,
     );
   }
 
-  const dimensions = ["domain", "type", "side", "difficulty", "eras"];
-  for (const dimension of dimensions) {
-    for (const [key, expected] of Object.entries(EXPECTED_COUNTS[dimension])) {
-      const actual = counts[dimension][key];
-      if (actual !== expected) {
+  for (const axis of ALLOWED_AXES) {
+    if (counts.axis[axis] > EXPECTED_FINAL.per_axis) {
+      throw new Error(
+        `تعداد سوال‌های محور ${axis} بیشتر از حد مجاز است. max=${EXPECTED_FINAL.per_axis} actual=${counts.axis[axis]}`,
+      );
+    }
+  }
+
+  if (counts.total === EXPECTED_FINAL.total) {
+    for (const axis of ALLOWED_AXES) {
+      if (counts.axis[axis] !== EXPECTED_FINAL.per_axis) {
         throw new Error(
-          `توزیع نامعتبر در ${dimension}.${key}. expected=${expected} actual=${actual}`,
+          `در نسخه کامل، هر محور باید دقیقا ${EXPECTED_FINAL.per_axis} سوال داشته باشد: axis=${axis} actual=${counts.axis[axis]}`,
         );
       }
     }
@@ -1449,12 +1292,11 @@ validateDistribution(QUESTIONS);
 
 QUESTIONS.forEach((question) => {
   Object.freeze(question.source_refs);
-  Object.freeze(question.learning_links);
   Object.freeze(question.correct_view);
   Object.freeze(question.counter_view);
   Object.freeze(question);
 });
 Object.freeze(QUESTIONS);
 
-export { QUESTIONS };
+export { QUESTIONS, AXIS_BANKS };
 export default QUESTIONS;
