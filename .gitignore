@@ -4,3 +4,4 @@ node_modules
 npm-debug.log*
 storage/metrics.json
 storage/submissions.ndjson
+report/questions-audit.json

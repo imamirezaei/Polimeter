@@ -28,11 +28,19 @@ const TYPE_LABELS = {
   definition: "تعریف",
 };
 
-const TYPE_QUOTAS = {
-  concept: 7,
-  statement: 7,
-  definition: 6,
+const SIDE_LABELS = {
+  left: "چپ",
+  right: "راست",
 };
+
+const AXES = [
+  "economic",
+  "domestic_policy",
+  "foreign_policy",
+  "historical",
+  "national_security",
+];
+const AXIS_FALLBACK_KEY = "__unassigned__";
 
 const state = {
   phase: QUIZ_STATES.START,
@@ -74,6 +82,8 @@ const dom = {
   conceptScore: document.getElementById("score-concept"),
   statementScore: document.getElementById("score-statement"),
   definitionScore: document.getElementById("score-definition"),
+  reviewList: document.getElementById("review-list"),
+  reviewEmpty: document.getElementById("review-empty"),
   restartBtn: document.getElementById("restart-btn"),
   themeButtons: Array.from(document.querySelectorAll(".theme-btn")),
 };
@@ -217,162 +227,167 @@ function setPhase(nextPhase) {
   dom.resultScreen.classList.toggle("is-active", nextPhase === QUIZ_STATES.RESULT);
 }
 
-function getPoolsByTypeAndSide() {
-  return {
-    concept: {
-      left: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "concept" && question.correct_side === "left",
-        ),
-      ),
-      right: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "concept" && question.correct_side === "right",
-        ),
-      ),
-    },
-    statement: {
-      left: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "statement" && question.correct_side === "left",
-        ),
-      ),
-      right: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "statement" && question.correct_side === "right",
-        ),
-      ),
-    },
-    definition: {
-      left: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "definition" && question.correct_side === "left",
-        ),
-      ),
-      right: shuffle(
-        QUESTIONS.filter(
-          (question) =>
-            question.type === "definition" && question.correct_side === "right",
-        ),
-      ),
-    },
-  };
+function isValidAxis(axis) {
+  return AXES.includes(axis);
 }
 
-function findBestLeftPlan(pools, targetLeftCount) {
-  const types = Object.keys(TYPE_QUOTAS);
+function buildAxisPools() {
+  const pools = new Map();
+  AXES.forEach((axis) => pools.set(axis, []));
+  pools.set(AXIS_FALLBACK_KEY, []);
 
-  const bounds = types.reduce((acc, type) => {
-    const quota = TYPE_QUOTAS[type];
-    acc[type] = {
-      min: Math.max(0, quota - pools[type].right.length),
-      max: Math.min(quota, pools[type].left.length),
-    };
-    return acc;
-  }, {});
-
-  const minPossibleTotal = types.reduce((sum, type) => sum + bounds[type].min, 0);
-  const maxPossibleTotal = types.reduce((sum, type) => sum + bounds[type].max, 0);
-
-  const safeTarget = Math.min(
-    Math.max(targetLeftCount, minPossibleTotal),
-    maxPossibleTotal,
-  );
-
-  let bestPlan = null;
-  let bestBalanceError = Number.POSITIVE_INFINITY;
-  let bestSymmetryError = Number.POSITIVE_INFINITY;
-
-  function visit(index, partialPlan, partialLeftCount) {
-    if (index === types.length) {
-      const balanceError = Math.abs(partialLeftCount - safeTarget);
-      const symmetryError = types.reduce((sum, type) => {
-        return sum + Math.abs(partialPlan[type] - TYPE_QUOTAS[type] / 2);
-      }, 0);
-
-      if (
-        balanceError < bestBalanceError ||
-        (balanceError === bestBalanceError && symmetryError < bestSymmetryError)
-      ) {
-        bestPlan = { ...partialPlan };
-        bestBalanceError = balanceError;
-        bestSymmetryError = symmetryError;
-      }
-      return;
-    }
-
-    const type = types[index];
-    const { min, max } = bounds[type];
-
-    const remainingTypes = types.slice(index + 1);
-    const remainingMin = remainingTypes.reduce(
-      (sum, key) => sum + bounds[key].min,
-      0,
-    );
-    const remainingMax = remainingTypes.reduce(
-      (sum, key) => sum + bounds[key].max,
-      0,
-    );
-
-    for (let leftCount = min; leftCount <= max; leftCount += 1) {
-      const nextLeftCount = partialLeftCount + leftCount;
-      if (
-        nextLeftCount + remainingMin > safeTarget ||
-        nextLeftCount + remainingMax < safeTarget
-      ) {
-        continue;
-      }
-
-      partialPlan[type] = leftCount;
-      visit(index + 1, partialPlan, nextLeftCount);
+  for (const question of QUESTIONS) {
+    if (isValidAxis(question.axis)) {
+      pools.get(question.axis).push(question);
+    } else {
+      pools.get(AXIS_FALLBACK_KEY).push(question);
     }
   }
 
-  visit(0, {}, 0);
-
-  if (bestPlan) {
-    return bestPlan;
+  for (const [key, items] of pools.entries()) {
+    pools.set(key, shuffle(items));
   }
 
-  return {
-    concept: Math.min(TYPE_QUOTAS.concept, pools.concept.left.length),
-    statement: Math.min(TYPE_QUOTAS.statement, pools.statement.left.length),
-    definition: Math.min(TYPE_QUOTAS.definition, pools.definition.left.length),
-  };
+  return pools;
+}
+
+function buildAxisTargets(totalQuestions) {
+  const targets = Object.fromEntries(AXES.map((axis) => [axis, 0]));
+  if (totalQuestions <= 0) {
+    return targets;
+  }
+
+  if (totalQuestions < AXES.length) {
+    const order = shuffle([...AXES]);
+    order.slice(0, totalQuestions).forEach((axis) => {
+      targets[axis] += 1;
+    });
+    return targets;
+  }
+
+  const baseShare = Math.floor(totalQuestions / AXES.length);
+  const remainder = totalQuestions - baseShare * AXES.length;
+
+  AXES.forEach((axis) => {
+    targets[axis] = baseShare;
+  });
+
+  shuffle([...AXES])
+    .slice(0, remainder)
+    .forEach((axis) => {
+      targets[axis] += 1;
+    });
+
+  return targets;
+}
+
+function computeAxisCounts(questions) {
+  const counts = Object.fromEntries(AXES.map((axis) => [axis, 0]));
+  counts.unassigned = 0;
+
+  for (const question of questions) {
+    if (isValidAxis(question.axis)) {
+      counts[question.axis] += 1;
+    } else {
+      counts.unassigned += 1;
+    }
+  }
+
+  return counts;
 }
 
 function buildQuizQuestions() {
-  const pools = getPoolsByTypeAndSide();
-  const leftPlan = findBestLeftPlan(pools, QUIZ_SIZE / 2);
-
+  const pools = buildAxisPools();
+  const targets = buildAxisTargets(QUIZ_SIZE);
   const selected = [];
-  Object.keys(TYPE_QUOTAS).forEach((type) => {
-    const quota = TYPE_QUOTAS[type];
-    const leftCount = leftPlan[type] ?? Math.floor(quota / 2);
-    const rightCount = quota - leftCount;
+  const selectedByAxis = Object.fromEntries(AXES.map((axis) => [axis, 0]));
+  const fallbackEvents = [];
+  let shortage = 0;
 
-    selected.push(...pools[type].left.slice(0, leftCount));
-    selected.push(...pools[type].right.slice(0, rightCount));
-  });
+  for (const axis of AXES) {
+    const axisPool = pools.get(axis) || [];
+    const target = targets[axis] || 0;
+    const take = Math.min(target, axisPool.length);
+    if (take > 0) {
+      selected.push(...axisPool.splice(0, take));
+      selectedByAxis[axis] += take;
+    }
 
-  return shuffle(selected).slice(0, QUIZ_SIZE);
+    if (take < target) {
+      shortage += target - take;
+      fallbackEvents.push(
+        `axis_shortage axis=${axis} target=${target} available=${axisPool.length + take}`,
+      );
+    }
+  }
+
+  while (shortage > 0) {
+    const candidateAxes = AXES.filter((axis) => (pools.get(axis) || []).length > 0);
+    if (!candidateAxes.length) {
+      break;
+    }
+
+    const minSelected = Math.min(...candidateAxes.map((axis) => selectedByAxis[axis] || 0));
+    const bestAxes = candidateAxes.filter(
+      (axis) => (selectedByAxis[axis] || 0) === minSelected,
+    );
+    const chosenAxis = bestAxes[Math.floor(Math.random() * bestAxes.length)];
+    const axisPool = pools.get(chosenAxis);
+    const item = axisPool.shift();
+    if (!item) {
+      break;
+    }
+
+    selected.push(item);
+    selectedByAxis[chosenAxis] += 1;
+    shortage -= 1;
+  }
+
+  if (shortage > 0) {
+    const fallbackPool = pools.get(AXIS_FALLBACK_KEY) || [];
+    const take = Math.min(shortage, fallbackPool.length);
+    if (take > 0) {
+      selected.push(...fallbackPool.splice(0, take));
+      shortage -= take;
+      fallbackEvents.push(`fallback_from_unassigned count=${take}`);
+    }
+  }
+
+  if (selected.length < QUIZ_SIZE) {
+    const remaining = shuffle(
+      AXES.flatMap((axis) => pools.get(axis) || []).concat(pools.get(AXIS_FALLBACK_KEY) || []),
+    );
+    const needed = QUIZ_SIZE - selected.length;
+    if (needed > 0) {
+      selected.push(...remaining.slice(0, needed));
+      fallbackEvents.push(`global_fallback_fill count=${Math.min(needed, remaining.length)}`);
+    }
+  }
+
+  if (selected.length !== QUIZ_SIZE) {
+    throw new Error(`quiz_size_mismatch expected=${QUIZ_SIZE} actual=${selected.length}`);
+  }
+
+  const axisCounts = computeAxisCounts(selected);
+  if (fallbackEvents.length > 0) {
+    console.warn(`[quiz-selection] axis fallback applied: ${fallbackEvents.join(" | ")}`);
+  }
+  console.info("[quiz-selection] counts.selected_axis", axisCounts);
+
+  return shuffle(selected);
 }
 
 function renderQuestion() {
   const question = state.questions[state.currentIndex];
   const questionNumber = state.currentIndex + 1;
+  const totalQuestions = state.questions.length || QUIZ_SIZE;
 
   dom.questionIndex.textContent = String(questionNumber);
-  dom.questionTotal.textContent = String(QUIZ_SIZE);
+  dom.questionTotal.textContent = String(totalQuestions);
   dom.typeBadge.textContent = TYPE_LABELS[question.type] || question.type;
   dom.questionText.textContent = question.text;
 
-  const progress = percentage(questionNumber, QUIZ_SIZE);
+  const progress = percentage(questionNumber, totalQuestions);
   dom.progressFill.style.width = `${progress}%`;
 
   dom.leftBtn.disabled = false;
@@ -382,7 +397,7 @@ function renderQuestion() {
 
   dom.nextBtn.disabled = true;
   dom.nextBtn.textContent =
-    questionNumber === QUIZ_SIZE ? "نمایش نتیجه" : "بعدی";
+    questionNumber === totalQuestions ? "نمایش نتیجه" : "بعدی";
 
   dom.feedback.classList.add("is-hidden");
   dom.feedback.classList.remove("is-correct", "is-wrong");
@@ -454,39 +469,31 @@ function chooseAnswer(selectedSide) {
     return;
   }
 
-  const alreadyAnswered = state.answers.some(
+  const isCorrect = selectedSide === question.correct_side;
+  const existingIndex = state.answers.findIndex(
     (entry) => entry.questionId === question.id,
   );
 
-  if (alreadyAnswered) {
-    return;
-  }
-
-  const isCorrect = selectedSide === question.correct_side;
-
-  state.answers.push({
+  const nextAnswer = {
     questionId: question.id,
     selectedSide,
     isCorrect,
     type: question.type,
     correctSide: question.correct_side,
-  });
+    questionText: question.text,
+    explanation: question.explanation,
+  };
 
-  dom.leftBtn.disabled = true;
-  dom.rightBtn.disabled = true;
+  if (existingIndex >= 0) {
+    state.answers[existingIndex] = nextAnswer;
+  } else {
+    state.answers.push(nextAnswer);
+  }
+
   dom.nextBtn.disabled = false;
 
   dom.leftBtn.classList.toggle("is-selected", selectedSide === "left");
   dom.rightBtn.classList.toggle("is-selected", selectedSide === "right");
-
-  dom.feedback.classList.remove("is-hidden");
-  dom.feedback.classList.toggle("is-correct", isCorrect);
-  dom.feedback.classList.toggle("is-wrong", !isCorrect);
-
-  dom.feedbackTitle.textContent = isCorrect
-    ? "پاسخ شما درست است."
-    : "پاسخ شما نادرست است.";
-  dom.feedbackText.textContent = question.explanation;
 }
 
 function nextQuestion() {
@@ -499,7 +506,7 @@ function nextQuestion() {
     return;
   }
 
-  if (state.currentIndex < QUIZ_SIZE - 1) {
+  if (state.currentIndex < state.questions.length - 1) {
     state.currentIndex += 1;
     renderQuestion();
     return;
@@ -509,6 +516,7 @@ function nextQuestion() {
 }
 
 function computeMetrics() {
+  const totalQuestions = state.questions.length || QUIZ_SIZE;
   const correctCount = state.answers.filter((entry) => entry.isCorrect).length;
   const wrongCount = state.answers.length - correctCount;
 
@@ -537,13 +545,161 @@ function computeMetrics() {
   );
 
   return {
-    totalScore: percentage(correctCount, QUIZ_SIZE),
+    totalScore: percentage(correctCount, totalQuestions),
     leftScore: percentage(leftCorrect, leftQuestions.length),
     rightScore: percentage(rightCorrect, rightQuestions.length),
     correctCount,
     wrongCount,
+    totalQuestions,
     typeStats,
   };
+}
+
+function renderReviewList() {
+  if (!dom.reviewList || !dom.reviewEmpty) {
+    return;
+  }
+
+  dom.reviewList.innerHTML = "";
+  if (!state.answers.length) {
+    dom.reviewEmpty.classList.remove("is-hidden");
+    return;
+  }
+
+  dom.reviewEmpty.classList.add("is-hidden");
+
+  const renderViewBlock = (titleText, view) => {
+    if (!view || typeof view !== "object") {
+      return null;
+    }
+
+    const summary = String(view.summary || "").trim();
+    const keyDistinction = String(view.key_distinction || "").trim();
+    if (!summary && !keyDistinction) {
+      return null;
+    }
+
+    const wrapper = document.createElement("section");
+    wrapper.className = "review-view";
+
+    const title = document.createElement("p");
+    title.className = "review-view-title";
+    title.textContent = `${titleText} (${SIDE_LABELS[view.side] || view.side})`;
+    wrapper.appendChild(title);
+
+    if (summary) {
+      const summaryEl = document.createElement("p");
+      summaryEl.className = "review-view-summary";
+      summaryEl.textContent = summary;
+      wrapper.appendChild(summaryEl);
+    }
+
+    if (keyDistinction) {
+      const distinctionEl = document.createElement("p");
+      distinctionEl.className = "review-view-distinction";
+      distinctionEl.textContent = keyDistinction;
+      wrapper.appendChild(distinctionEl);
+    }
+
+    return wrapper;
+  };
+
+  const renderLearningLinks = (links) => {
+    if (!Array.isArray(links) || !links.length) {
+      return null;
+    }
+
+    const normalized = links.filter((link) => {
+      if (!link || typeof link !== "object") {
+        return false;
+      }
+      const title = String(link.title || "").trim();
+      const url = String(link.url || "").trim();
+      return Boolean(title && url);
+    });
+
+    if (!normalized.length) {
+      return null;
+    }
+
+    const section = document.createElement("section");
+    section.className = "review-links";
+
+    const title = document.createElement("p");
+    title.className = "review-links-title";
+    title.textContent = "مطالعه بیشتر";
+    section.appendChild(title);
+
+    const list = document.createElement("ul");
+    list.className = "review-links-list";
+    for (const link of normalized) {
+      const item = document.createElement("li");
+      const anchor = document.createElement("a");
+      anchor.href = String(link.url);
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.textContent = String(link.title);
+      item.appendChild(anchor);
+      list.appendChild(item);
+    }
+
+    section.appendChild(list);
+    return section;
+  };
+
+  state.questions.forEach((question, index) => {
+    const answer = state.answers.find((entry) => entry.questionId === question.id);
+    if (!answer) {
+      return;
+    }
+
+    const item = document.createElement("article");
+    item.className = `review-item ${answer.isCorrect ? "is-correct" : "is-wrong"}`;
+
+    const head = document.createElement("div");
+    head.className = "review-head";
+
+    const title = document.createElement("p");
+    title.className = "review-title";
+    title.textContent = `سوال ${index + 1} · ${TYPE_LABELS[question.type] || question.type}`;
+
+    const status = document.createElement("p");
+    status.className = "review-status";
+    status.textContent = answer.isCorrect ? "درست" : "نادرست";
+
+    head.append(title, status);
+
+    const text = document.createElement("p");
+    text.className = "review-question";
+    text.textContent = question.text;
+
+    const choices = document.createElement("p");
+    choices.className = "review-choices";
+    choices.textContent = `پاسخ شما: ${SIDE_LABELS[answer.selectedSide]} | پاسخ درست: ${SIDE_LABELS[question.correct_side]}`;
+
+    const explanation = document.createElement("p");
+    explanation.className = "review-explanation";
+    explanation.textContent = question.explanation;
+
+    item.append(head, text, choices, explanation);
+
+    const correctViewBlock = renderViewBlock("دیدگاه درست", question.correct_view);
+    if (correctViewBlock) {
+      item.appendChild(correctViewBlock);
+    }
+
+    const counterViewBlock = renderViewBlock("دیدگاه مقابل", question.counter_view);
+    if (counterViewBlock) {
+      item.appendChild(counterViewBlock);
+    }
+
+    const linksBlock = renderLearningLinks(question.learning_links);
+    if (linksBlock) {
+      item.appendChild(linksBlock);
+    }
+
+    dom.reviewList.appendChild(item);
+  });
 }
 
 async function submitAnswersIfConsented(completedAt) {
@@ -592,6 +748,7 @@ function showResults() {
   dom.definitionScore.textContent = String(metrics.typeStats.definition);
 
   setPhase(QUIZ_STATES.RESULT);
+  renderReviewList();
 
   const completedAt = new Date().toISOString();
   void submitAnswersIfConsented(completedAt);
@@ -603,6 +760,12 @@ function restartQuiz() {
   state.currentIndex = 0;
   state.consentToStoreAnswers = false;
   state.startedAt = null;
+  if (dom.reviewList) {
+    dom.reviewList.innerHTML = "";
+  }
+  if (dom.reviewEmpty) {
+    dom.reviewEmpty.classList.add("is-hidden");
+  }
 
   setPhase(QUIZ_STATES.START);
 }

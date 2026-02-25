@@ -193,6 +193,11 @@ h2 {
   font-size: 1.28rem;
 }
 
+h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
 .intro-list {
   margin: 0 0 14px;
   padding-inline-start: 19px;
@@ -450,6 +455,145 @@ h2 {
 .breakdown td:last-child {
   text-align: left;
   font-weight: 700;
+}
+
+.review-panel {
+  margin-top: 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.review-empty {
+  margin: 10px 0 0;
+  color: var(--soft);
+}
+
+.review-empty.is-hidden {
+  display: none;
+}
+
+.review-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.review-item {
+  border: 1px solid var(--panel-border);
+  border-radius: 11px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.review-item.is-correct {
+  border-color: color-mix(in oklab, var(--ok) 42%, var(--panel-border));
+}
+
+.review-item.is-wrong {
+  border-color: color-mix(in oklab, var(--error) 42%, var(--panel-border));
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.review-title,
+.review-status,
+.review-question,
+.review-choices,
+.review-explanation {
+  margin: 0;
+}
+
+.review-title {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.review-status {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.review-item.is-correct .review-status {
+  color: var(--ok);
+}
+
+.review-item.is-wrong .review-status {
+  color: var(--error);
+}
+
+.review-question {
+  margin-top: 8px;
+  line-height: 1.8;
+}
+
+.review-choices {
+  margin-top: 8px;
+  color: var(--soft);
+  font-size: 0.9rem;
+}
+
+.review-explanation {
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.review-view {
+  margin-top: 8px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
+}
+
+.review-view-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.review-view-summary,
+.review-view-distinction {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.review-links {
+  margin-top: 8px;
+}
+
+.review-links-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.review-links-list {
+  margin: 6px 0 0;
+  padding-inline-start: 18px;
+}
+
+.review-links-list li {
+  margin: 4px 0;
+}
+
+.review-links-list a {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+.review-links-list a:hover {
+  text-decoration: underline;
 }
 
 .footer-note {

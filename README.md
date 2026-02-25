@@ -8,6 +8,8 @@
 - ذخیره پاسخ‌ها فقط با رضایت اختیاری (checkbox)
 - شمارنده تعداد شروع آزمون به‌صورت سروری
 - سازگار با معماری Frontend/Backend جدا
+- بانک سوال v2 با ترکیب `50% مفهومی + 50% تاریخی (مشروطه تا امروز)`
+- نمایش توضیح آموزشی سوال‌ها فقط در پایان آزمون
 
 ## رفتار داده
 - **همیشه ثبت می‌شود:** شمارنده شروع آزمون
@@ -19,7 +21,29 @@
 - `style.css`
 - `app.js`
 - `data/questions.js`
+- `scripts/audit-question-bias.mjs`
 - `server.js`
+
+## اسکیمای سوال (v2)
+هر سوال در `data/questions.js` شامل این فیلدهاست:
+- `id`
+- `type`: `concept | statement | definition`
+- `domain`: `conceptual | historical`
+- `era`: برای سوال تاریخی یکی از کلاسترها، برای مفهومی `null`
+- `text`
+- `correct_side`: `left | right`
+- `topic`
+- `difficulty`: `easy | medium`
+- `explanation`
+- `evidence_note` (داخلی)
+- `source_refs` (داخلی)
+
+توزیع قفل‌شده بانک:
+- `40` سوال
+- `20 conceptual + 20 historical`
+- `20 left + 20 right`
+- `20 easy + 20 medium`
+- `14 concept + 13 statement + 13 definition`
 
 ## APIها
 ### `GET /api/metrics`
@@ -64,6 +88,15 @@ npm run dev
 - `http://localhost:8787`
 
 اگر پورت اشغال باشد، سرور خودکار روی پورت بعدی بالا می‌آید.
+
+## گیت کیفیت بانک سوال
+برای بررسی سوگیری واژگانی و توازن توزیع:
+```bash
+npm run questions:audit
+```
+
+خروجی گزارش:
+- `report/questions-audit.json`
 
 ## تنظیمات محیطی
 نمونه در `.env.example`:
