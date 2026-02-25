@@ -3,7 +3,6 @@ import QUESTIONS from "./data/questions.js";
 const QUIZ_SIZE = 20;
 const QUIZ_VERSION = "v1";
 const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
-const THEME_KEY = "polimeter_theme_mode";
 const API_TIMEOUT_MS = 6000;
 const COUNTER_DIGITS = 6;
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
@@ -22,12 +21,6 @@ const QUIZ_STATES = {
   START: "start",
   IN_PROGRESS: "in-progress",
   RESULT: "result",
-};
-
-const TYPE_LABELS = {
-  concept: "مفهوم",
-  statement: "گزاره",
-  definition: "تعریف",
 };
 
 const SIDE_LABELS = {
@@ -71,16 +64,8 @@ const dom = {
   startScreen: document.getElementById("screen-start"),
   quizScreen: document.getElementById("screen-quiz"),
   resultScreen: document.getElementById("screen-result"),
-  bankTotal: document.getElementById("bank-total"),
-  axisTotal: document.getElementById("axis-total"),
-  quizSize: document.getElementById("quiz-size"),
-  sideDistribution: document.getElementById("side-distribution"),
-  typeDistribution: document.getElementById("type-distribution"),
-  axisDistribution: document.getElementById("axis-distribution"),
-  attemptCount: document.getElementById("attempt-count"),
   attemptCounterBoard: document.getElementById("attempt-counter-board"),
   consentCheckbox: document.getElementById("consent-checkbox"),
-  apiStatus: document.getElementById("api-status"),
   startBtn: document.getElementById("start-btn"),
   questionIndex: document.getElementById("question-index"),
   questionTotal: document.getElementById("question-total"),
@@ -93,9 +78,6 @@ const dom = {
   prevBtn: document.getElementById("prev-btn"),
   nextBtn: document.getElementById("next-btn"),
   nextAction: document.getElementById("quiz-result-action"),
-  feedback: document.getElementById("feedback"),
-  feedbackTitle: document.getElementById("feedback-title"),
-  feedbackText: document.getElementById("feedback-text"),
   scoreCardTotal: document.getElementById("score-card-total"),
   scoreCardLeft: document.getElementById("score-card-left"),
   scoreCardRight: document.getElementById("score-card-right"),
@@ -109,7 +91,6 @@ const dom = {
   reviewEmpty: document.getElementById("review-empty"),
   shareBtn: document.getElementById("share-btn"),
   restartBtn: document.getElementById("restart-btn"),
-  themeButtons: Array.from(document.querySelectorAll(".theme-btn")),
 };
 
 function toApiUrl(pathname) {
@@ -174,40 +155,23 @@ async function apiRequest(pathname, options = {}) {
   }
 }
 
-function setApiStatus(message, type = "info") {
-  if (!dom.apiStatus) {
-    return;
-  }
-
-  if (!message) {
-    dom.apiStatus.textContent = "";
-    dom.apiStatus.className = "api-status is-hidden";
-    return;
-  }
-
-  dom.apiStatus.textContent = message;
-  dom.apiStatus.className = `api-status ${type}`;
+function setApiStatus() {
+  // در نسخه فعلی نوار وضعیت در UI نمایش داده نمی‌شود.
 }
 
 function updateStartCounter(count) {
-  if (!dom.attemptCount && !dom.attemptCounterBoard) {
+  if (!dom.attemptCounterBoard) {
     return;
   }
 
   const safeCount = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
-  if (dom.attemptCount) {
-    dom.attemptCount.textContent = formatFaNumber(safeCount);
-  }
-
-  if (dom.attemptCounterBoard) {
-    const digits = toFaDigits(
-      String(safeCount).padStart(COUNTER_DIGITS, "0").slice(-COUNTER_DIGITS),
-    );
-    dom.attemptCounterBoard.innerHTML = digits
-      .split("")
-      .map((digit) => `<span class="counter-cell">${digit}</span>`)
-      .join("");
-  }
+  const digits = toFaDigits(
+    String(safeCount).padStart(COUNTER_DIGITS, "0").slice(-COUNTER_DIGITS),
+  );
+  dom.attemptCounterBoard.innerHTML = digits
+    .split("")
+    .map((digit) => `<span class="counter-cell">${digit}</span>`)
+    .join("");
 }
 
 function toFaDigits(value) {
@@ -325,82 +289,6 @@ function computeSideF1(questions, answerByQuestionId, side) {
   return safeDivide(2 * precision * recall, precision + recall);
 }
 
-function summarizeQuestionBank() {
-  const total = QUESTIONS.length;
-  const uniqueAxisCount = new Set(QUESTIONS.map((question) => question.axis)).size;
-
-  const sideCounts = QUESTIONS.reduce(
-    (acc, question) => {
-      if (question.correct_side === "left") {
-        acc.left += 1;
-      } else if (question.correct_side === "right") {
-        acc.right += 1;
-      }
-      return acc;
-    },
-    { left: 0, right: 0 },
-  );
-
-  const typeCounts = QUESTIONS.reduce((acc, question) => {
-    acc[question.type] = (acc[question.type] || 0) + 1;
-    return acc;
-  }, {});
-
-  const axisCounts = QUESTIONS.reduce((acc, question) => {
-    acc[question.axis] = (acc[question.axis] || 0) + 1;
-    return acc;
-  }, {});
-
-  return {
-    total,
-    uniqueAxisCount,
-    sideCounts,
-    typeCounts,
-    axisCounts,
-  };
-}
-
-function renderStartSummary() {
-  const summary = summarizeQuestionBank();
-
-  if (dom.bankTotal) {
-    dom.bankTotal.textContent = formatFaNumber(summary.total);
-  }
-
-  if (dom.axisTotal) {
-    dom.axisTotal.textContent = formatFaNumber(summary.uniqueAxisCount);
-  }
-
-  if (dom.quizSize) {
-    dom.quizSize.textContent = formatFaNumber(Math.min(QUIZ_SIZE, summary.total));
-  }
-
-  if (dom.sideDistribution) {
-    dom.sideDistribution.textContent = `چپ ${formatFaNumber(summary.sideCounts.left)} | راست ${formatFaNumber(summary.sideCounts.right)}`;
-  }
-
-  if (dom.typeDistribution) {
-    dom.typeDistribution.textContent = Object.entries(summary.typeCounts)
-      .map(([type, count]) => `${TYPE_LABELS[type] || type} ${formatFaNumber(count)}`)
-      .join(" | ");
-  }
-
-  if (dom.axisDistribution) {
-    const axisEntries = AXES.map((axis) => {
-      const label = AXIS_LABELS[axis] || axis;
-      const count = summary.axisCounts[axis] || 0;
-      return { label, count };
-    });
-
-    dom.axisDistribution.innerHTML = axisEntries
-      .map(
-        ({ label, count }) =>
-          `<span class="axis-chip">${label}<span class="axis-chip-count">${formatFaNumber(count)}</span></span>`,
-      )
-      .join("");
-  }
-}
-
 async function fetchMetricsCountFromFile() {
   const response = await fetch(toStaticUrl("storage/metrics.json"), {
     method: "GET",
@@ -444,41 +332,6 @@ function writeStartCountLocal(value) {
   } catch {
     // ذخیره local اختیاری است.
   }
-}
-
-function readThemeMode() {
-  try {
-    const value = localStorage.getItem(THEME_KEY);
-    if (value === "light" || value === "dark" || value === "system") {
-      return value;
-    }
-    return "system";
-  } catch {
-    return "system";
-  }
-}
-
-function writeThemeMode(mode) {
-  try {
-    localStorage.setItem(THEME_KEY, mode);
-  } catch {
-    // ذخیره تم اختیاری است.
-  }
-}
-
-function applyTheme(mode) {
-  const normalized = mode === "light" || mode === "dark" ? mode : "system";
-
-  if (normalized === "system") {
-    document.documentElement.removeAttribute("data-theme");
-  } else {
-    document.documentElement.setAttribute("data-theme", normalized);
-  }
-
-  dom.themeButtons.forEach((button) => {
-    const isActive = button.dataset.themeMode === normalized;
-    button.setAttribute("aria-pressed", String(isActive));
-  });
 }
 
 function setScreenVisibility(screen, isVisible) {
@@ -752,11 +605,6 @@ function renderQuestion() {
 
   updateProgressState();
   updateQuizActions();
-
-  if (dom.feedback) {
-    dom.feedback.classList.add("is-hidden");
-    dom.feedback.classList.remove("is-correct", "is-wrong");
-  }
 }
 
 async function registerStartEvent(startedAt) {
@@ -1290,8 +1138,6 @@ async function syncCounterOnLoad() {
 }
 
 function initialize() {
-  applyTheme(readThemeMode());
-  renderStartSummary();
   setPhase(state.phase);
   void syncCounterOnLoad();
 
@@ -1305,14 +1151,6 @@ function initialize() {
     void shareResults();
   });
   dom.restartBtn.addEventListener("click", restartQuiz);
-
-  dom.themeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const mode = button.dataset.themeMode || "system";
-      applyTheme(mode);
-      writeThemeMode(mode);
-    });
-  });
 
   document.addEventListener("keydown", (event) => {
     if (state.phase !== QUIZ_STATES.IN_PROGRESS) {

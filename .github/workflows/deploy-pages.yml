@@ -25,12 +25,14 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Prepare static artifact
         run: |
           rm -rf site
           mkdir -p site
-          cp index.html style.css app.js LICENSE README.md site/
+          cp index.html style.css app.js og-image.svg LICENSE README.md site/
           cp -R data storage site/
           touch site/.nojekyll
 
