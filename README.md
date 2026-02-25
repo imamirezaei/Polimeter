@@ -94,7 +94,8 @@ Default local URL: `http://localhost:8787`
 The project can run fully static (e.g., GitHub Pages):
 
 - Quiz flow works end-to-end in the browser.
-- Participant counter reads from `storage/metrics.json` when available.
+- Participant counter is global via `countapi.xyz` in static runtime.
+- `storage/metrics.json` is used as an additional fallback source when available.
 - Local fallback counter is maintained in `localStorage`.
 - `/api/*` requests are only used when a runtime API is available.
 

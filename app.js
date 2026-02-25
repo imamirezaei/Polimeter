@@ -6,6 +6,7 @@ const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
 const API_TIMEOUT_MS = 6000;
 const COUNTER_DIGITS = 6;
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+const PUBLIC_COUNTER_BASE_URL = "https://api.countapi.xyz";
 
 const metaApiBase = document
   .querySelector('meta[name="polimeter-api-base-url"]')
@@ -115,6 +116,41 @@ function isLocalRuntime() {
 
 function canUseRuntimeApi() {
   return hasExplicitApiBase() || isLocalRuntime();
+}
+
+function canUsePublicCounter() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return !canUseRuntimeApi();
+}
+
+function sanitizeCounterSegment(value, fallback) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (normalized) {
+    return normalized;
+  }
+  return fallback;
+}
+
+function getPublicCounterNamespace() {
+  if (typeof window === "undefined") {
+    return "polimeter-ghpages";
+  }
+  const host = sanitizeCounterSegment(window.location.hostname, "polimeter-host");
+  return `polimeter-${host}`;
+}
+
+function getPublicCounterKey() {
+  if (typeof window === "undefined") {
+    return `start-count-${QUIZ_VERSION}`;
+  }
+  const pathToken = sanitizeCounterSegment(window.location.pathname, "root");
+  return `start-count-${pathToken}-${QUIZ_VERSION}`;
 }
 
 function toStaticUrl(relativePath) {
@@ -315,6 +351,34 @@ async function fetchMetricsCountFromApi() {
     throw new Error("invalid_metric_payload");
   }
   return Math.max(0, Math.floor(startCount));
+}
+
+async function fetchMetricsCountFromPublicCounter(mode = "get") {
+  const action = mode === "hit" ? "hit" : "get";
+  const namespace = getPublicCounterNamespace();
+  const key = getPublicCounterKey();
+  const endpoint = `${PUBLIC_COUNTER_BASE_URL}/${action}/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch(endpoint, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`public_counter_request_failed_${response.status}`);
+    }
+    const payload = await response.json();
+    const startCount = Number(payload?.value);
+    if (!Number.isFinite(startCount)) {
+      throw new Error("invalid_public_counter_payload");
+    }
+    return Math.max(0, Math.floor(startCount));
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function readStartCountLocal() {
@@ -611,6 +675,18 @@ async function registerStartEvent(startedAt) {
   state.startCountLocal += 1;
   writeStartCountLocal(state.startCountLocal);
   updateStartCounter(state.startCountLocal);
+
+  if (canUsePublicCounter()) {
+    try {
+      const startCount = await fetchMetricsCountFromPublicCounter("hit");
+      state.startCountRemote = startCount;
+      state.apiAvailable = true;
+      updateStartCounter(startCount);
+    } catch {
+      state.apiAvailable = false;
+    }
+    return;
+  }
 
   if (!canUseRuntimeApi()) {
     return;
@@ -1091,6 +1167,18 @@ function restartQuiz() {
 async function syncCounterOnLoad() {
   state.startCountLocal = readStartCountLocal();
   updateStartCounter(state.startCountLocal);
+
+  if (canUsePublicCounter()) {
+    try {
+      const startCount = await fetchMetricsCountFromPublicCounter("get");
+      state.startCountRemote = startCount;
+      state.apiAvailable = true;
+      updateStartCounter(startCount);
+      return;
+    } catch {
+      // اگر شمارنده عمومی در دسترس نبود، fallback محلی/فایل اجرا می‌شود.
+    }
+  }
 
   if (hasExplicitApiBase()) {
     try {
