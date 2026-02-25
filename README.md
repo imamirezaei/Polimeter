@@ -99,6 +99,24 @@ The project can run fully static (e.g., GitHub Pages):
 - Local fallback counter is maintained in `localStorage`.
 - `/api/*` requests are only used when a runtime API is available.
 
+## Reliable Cross-Device Counter (Server-Side)
+
+If you need a real shared counter between laptop/mobile/incognito sessions, use the backend API.
+GitHub Pages alone cannot persist shared writes.
+
+### Recommended setup
+
+1. Deploy `server.js` as a separate web service (Render is preconfigured via `render.yaml`).
+2. Set `CORS_ALLOWED_ORIGIN` on the API service to your frontend origin:
+   - `https://imamirezaei.github.io`
+3. Set your GitHub Pages frontend API base URL in `index.html`:
+
+```html
+<meta name="polimeter-api-base-url" content="https://YOUR-API-DOMAIN" />
+```
+
+After that, every click on `شروع تست` calls `POST /api/metrics/start` and the counter becomes truly global.
+
 ## GitHub Pages Deployment
 
 The repository already includes a Pages workflow:

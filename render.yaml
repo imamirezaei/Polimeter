@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: polimeter-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: MAX_PORT_ATTEMPTS
+        value: "1"
+      - key: CORS_ALLOWED_ORIGIN
+        sync: false
+      - key: ADMIN_EXPORT_TOKEN
+        sync: false
+    disk:
+      name: polimeter-storage
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1
