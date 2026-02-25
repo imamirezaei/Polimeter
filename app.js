@@ -2,39 +2,17 @@ import QUESTIONS from "./data/questions.js";
 
 const QUIZ_SIZE = 20;
 const QUIZ_VERSION = "v1";
-const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
 const API_TIMEOUT_MS = 15000;
+const COUNTER_POST_TIMEOUT_MS = 4000;
 const COUNTER_DIGITS = 6;
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-const PUBLIC_COUNTER_PROVIDERS = [
-  {
-    name: "counterapi-dev",
-    getUrl(namespace, key) {
-      return `https://api.counterapi.dev/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}/`;
-    },
-    hitUrl(namespace, key) {
-      return `https://api.counterapi.dev/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}/up`;
-    },
-    parseCount(payload) {
-      return Number(payload?.count);
-    },
-  },
-  {
-    name: "countapi-xyz",
-    getUrl(namespace, key) {
-      return `https://api.countapi.xyz/get/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
-    },
-    hitUrl(namespace, key) {
-      return `https://api.countapi.xyz/hit/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
-    },
-    parseCount(payload) {
-      return Number(payload?.value);
-    },
-  },
-];
 
 const metaApiBase = document
   .querySelector('meta[name="polimeter-api-base-url"]')
+  ?.getAttribute("content")
+  ?.trim();
+const metaCounterApiBase = document
+  .querySelector('meta[name="polimeter-counter-api-base-url"]')
   ?.getAttribute("content")
   ?.trim();
 
@@ -42,6 +20,11 @@ const API_BASE_URL =
   (typeof window !== "undefined" && window.POLIMETER_API_BASE_URL) ||
   metaApiBase ||
   "";
+const COUNTER_API_BASE =
+  (typeof window !== "undefined" && window.COUNTER_API_BASE) ||
+  (typeof window !== "undefined" && window.POLIMETER_COUNTER_API_BASE_URL) ||
+  metaCounterApiBase ||
+  API_BASE_URL;
 
 const QUIZ_STATES = {
   START: "start",
@@ -76,8 +59,8 @@ const state = {
   questions: [],
   answers: [],
   currentIndex: 0,
-  startCountLocal: 0,
   startCountRemote: null,
+  startRequestInFlight: false,
   apiAvailable: false,
   consentToStoreAnswers: false,
   startedAt: null,
@@ -119,8 +102,8 @@ const dom = {
   restartBtn: document.getElementById("restart-btn"),
 };
 
-function toApiUrl(pathname) {
-  const base = String(API_BASE_URL || "").replace(/\/$/, "");
+function toBaseUrl(pathname, baseUrl) {
+  const base = String(baseUrl || "").replace(/\/$/, "");
   if (!base) {
     return pathname;
   }
@@ -129,6 +112,10 @@ function toApiUrl(pathname) {
 
 function hasExplicitApiBase() {
   return Boolean(String(API_BASE_URL || "").trim());
+}
+
+function hasExplicitCounterApiBase() {
+  return Boolean(String(COUNTER_API_BASE || "").trim());
 }
 
 function isLocalRuntime() {
@@ -143,55 +130,20 @@ function canUseRuntimeApi() {
   return hasExplicitApiBase() || isLocalRuntime();
 }
 
-function canUsePublicCounter() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return !canUseRuntimeApi();
+function canUseCounterApi() {
+  return hasExplicitCounterApiBase() || isLocalRuntime();
 }
 
-function sanitizeCounterSegment(value, fallback) {
-  const normalized = String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  if (normalized) {
-    return normalized;
-  }
-  return fallback;
-}
-
-function getPublicCounterNamespace() {
-  if (typeof window === "undefined") {
-    return "polimeter-ghpages";
-  }
-  const host = sanitizeCounterSegment(window.location.hostname, "polimeter-host");
-  return `polimeter-${host}`;
-}
-
-function getPublicCounterKey() {
-  if (typeof window === "undefined") {
-    return `start-count-${QUIZ_VERSION}`;
-  }
-  const pathToken = sanitizeCounterSegment(window.location.pathname, "root");
-  return `start-count-${pathToken}-${QUIZ_VERSION}`;
-}
-
-function toStaticUrl(relativePath) {
-  const normalized = String(relativePath || "").replace(/^\/+/, "");
-  if (typeof window === "undefined") {
-    return `./${normalized}`;
-  }
-  return new URL(`./${normalized}`, window.location.href).toString();
-}
-
-async function apiRequest(pathname, options = {}) {
+async function apiRequest(pathname, options = {}, config = {}) {
+  const {
+    baseUrl = API_BASE_URL,
+    timeoutMs = API_TIMEOUT_MS,
+  } = config;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(toApiUrl(pathname), {
+    const response = await fetch(toBaseUrl(pathname, baseUrl), {
       ...options,
       signal: controller.signal,
       headers: {
@@ -350,91 +302,58 @@ function computeSideF1(questions, answerByQuestionId, side) {
   return safeDivide(2 * precision * recall, precision + recall);
 }
 
-async function fetchMetricsCountFromFile() {
-  const response = await fetch(toStaticUrl("storage/metrics.json"), {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`metrics_file_unavailable_${response.status}`);
-  }
-
-  const payload = await response.json();
-  const startCount = Number(payload?.start_count);
-  if (!Number.isFinite(startCount)) {
-    throw new Error("invalid_metrics_file_payload");
-  }
-
-  return Math.max(0, Math.floor(startCount));
-}
-
-async function fetchMetricsCountFromApi() {
-  const data = await apiRequest("/api/metrics", { method: "GET" });
-  const startCount = Number(data?.start_count);
+function parseStartCounterPayload(payload) {
+  const startCount = Number(payload?.count ?? payload?.start_count);
   if (!Number.isFinite(startCount)) {
     throw new Error("invalid_metric_payload");
   }
   return Math.max(0, Math.floor(startCount));
 }
 
-async function fetchMetricsCountFromPublicCounter(mode = "get") {
-  const namespace = getPublicCounterNamespace();
-  const key = getPublicCounterKey();
-  let lastError = null;
+async function fetchMetricsStartCountFromApi() {
+  const data = await apiRequest(
+    "/api/metrics/start",
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    },
+    {
+      baseUrl: COUNTER_API_BASE,
+      timeoutMs: API_TIMEOUT_MS,
+    },
+  );
 
-  for (const provider of PUBLIC_COUNTER_PROVIDERS) {
-    const endpoint = mode === "hit"
-      ? provider.hitUrl(namespace, key)
-      : provider.getUrl(namespace, key);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(endpoint, {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `public_counter_request_failed_${provider.name}_${response.status}`,
-        );
-      }
-
-      const payload = await response.json();
-      const startCount = provider.parseCount(payload);
-      if (!Number.isFinite(startCount)) {
-        throw new Error(`invalid_public_counter_payload_${provider.name}`);
-      }
-
-      return Math.max(0, Math.floor(startCount));
-    } catch (error) {
-      lastError = error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  throw lastError || new Error("public_counter_unavailable");
+  return parseStartCounterPayload(data);
 }
 
-function readStartCountLocal() {
-  try {
-    const value = Number(localStorage.getItem(LOCAL_ATTEMPT_KEY));
-    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-  } catch {
-    return 0;
-  }
+async function postMetricsStartEvent(eventId) {
+  const data = await apiRequest(
+    "/api/metrics/start",
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-store",
+      },
+      body: JSON.stringify({ eventId }),
+    },
+    {
+      baseUrl: COUNTER_API_BASE,
+      timeoutMs: COUNTER_POST_TIMEOUT_MS,
+    },
+  );
+
+  return parseStartCounterPayload(data);
 }
 
-function writeStartCountLocal(value) {
-  try {
-    localStorage.setItem(LOCAL_ATTEMPT_KEY, String(value));
-  } catch {
-    // ذخیره local اختیاری است.
+function createStartEventId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
   }
+  return `evt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function setScreenVisibility(screen, isVisible) {
@@ -710,60 +629,18 @@ function renderQuestion() {
   updateQuizActions();
 }
 
-async function registerStartEvent(startedAt) {
-  state.startCountLocal += 1;
-  writeStartCountLocal(state.startCountLocal);
-  updateStartCounter(state.startCountLocal);
-
-  if (canUsePublicCounter()) {
-    try {
-      const startCount = await fetchMetricsCountFromPublicCounter("hit");
-      state.startCountRemote = startCount;
-      state.apiAvailable = true;
-      updateStartCounter(startCount);
-    } catch {
-      state.apiAvailable = false;
-    }
+async function registerStartEvent(eventId) {
+  if (!canUseCounterApi()) {
     return;
   }
 
-  if (!canUseRuntimeApi()) {
-    return;
-  }
-
-  try {
-    const data = await apiRequest("/api/metrics/start", {
-      method: "POST",
-      body: JSON.stringify({
-        started_at: startedAt,
-        quiz_version: QUIZ_VERSION,
-      }),
-    });
-
-    const startCount = Number(data?.start_count);
-    if (Number.isFinite(startCount)) {
-      state.startCountRemote = startCount;
-      state.apiAvailable = true;
-      updateStartCounter(startCount);
-      if (!state.consentToStoreAnswers) {
-        setApiStatus(
-          "آزمون شروع شد. چون تیک ذخیره فعال نیست، پاسخ‌ها ذخیره نخواهند شد.",
-          "info",
-        );
-      }
-    }
-  } catch {
-    state.apiAvailable = false;
-    if (canUseRuntimeApi()) {
-      setApiStatus(
-        "ثبت آماری سرور فعلا در دسترس نیست. آزمون بدون اختلال ادامه پیدا می‌کند.",
-        "warning",
-      );
-    }
-  }
+  const startCount = await postMetricsStartEvent(eventId);
+  state.startCountRemote = startCount;
+  state.apiAvailable = true;
+  updateStartCounter(startCount);
 }
 
-function beginQuiz() {
+function startQuizSession() {
   clearAutoAdvanceTimer();
   state.consentToStoreAnswers = Boolean(dom.consentCheckbox?.checked);
   state.startedAt = new Date().toISOString();
@@ -790,8 +667,33 @@ function beginQuiz() {
       "info",
     );
   }
+}
 
-  void registerStartEvent(state.startedAt);
+async function beginQuiz() {
+  if (state.startRequestInFlight) {
+    return;
+  }
+
+  state.startRequestInFlight = true;
+  if (dom.startBtn) {
+    dom.startBtn.disabled = true;
+  }
+
+  const eventId = createStartEventId();
+  try {
+    await registerStartEvent(eventId);
+  } catch {
+    state.apiAvailable = false;
+    if (canUseCounterApi()) {
+      // در خطای POST، شروع آزمون را متوقف نمی‌کنیم و بعدا یک GET دیگر امتحان می‌کنیم.
+      setTimeout(() => {
+        void syncCounterOnLoad();
+      }, 1800);
+    }
+  } finally {
+    state.startRequestInFlight = false;
+    startQuizSession();
+  }
 }
 
 function chooseAnswer(selectedSide) {
@@ -1190,6 +1092,7 @@ function restartQuiz() {
   state.consentToStoreAnswers = false;
   state.startedAt = null;
   state.lastMetrics = null;
+  state.startRequestInFlight = false;
   if (dom.axisBreakdown) {
     dom.axisBreakdown.innerHTML = "";
   }
@@ -1199,68 +1102,29 @@ function restartQuiz() {
   if (dom.reviewEmpty) {
     dom.reviewEmpty.classList.add("is-hidden");
   }
+  if (dom.startBtn) {
+    dom.startBtn.disabled = false;
+  }
 
   setPhase(QUIZ_STATES.START);
 }
 
 async function syncCounterOnLoad() {
-  state.startCountLocal = readStartCountLocal();
-  updateStartCounter(state.startCountLocal);
+  updateStartCounter(
+    Number.isFinite(state.startCountRemote) ? state.startCountRemote : 0,
+  );
 
-  if (canUsePublicCounter()) {
-    try {
-      const startCount = await fetchMetricsCountFromPublicCounter("get");
-      state.startCountRemote = startCount;
-      state.apiAvailable = true;
-      updateStartCounter(startCount);
-      return;
-    } catch {
-      // اگر شمارنده عمومی در دسترس نبود، fallback محلی/فایل اجرا می‌شود.
-    }
-  }
-
-  if (hasExplicitApiBase()) {
-    try {
-      const startCount = await fetchMetricsCountFromApi();
-      state.startCountRemote = startCount;
-      state.apiAvailable = true;
-      updateStartCounter(startCount);
-      return;
-    } catch {
-      // اگر API تنظیم شده ولی پاسخ نداد، به فایل محلی fallback می‌کنیم.
-    }
-  }
-
-  try {
-    const startCount = await fetchMetricsCountFromFile();
-    state.startCountRemote = startCount;
-    state.apiAvailable = true;
-    updateStartCounter(startCount);
-    return;
-  } catch {
-    // در نسخه استاتیک، ممکن است فایل هم در دسترس نباشد.
-  }
-
-  if (!canUseRuntimeApi()) {
-    setApiStatus(
-      "شمارنده فقط به‌صورت محلی در همین مرورگر نمایش داده می‌شود.",
-      "info",
-    );
+  if (!canUseCounterApi()) {
     return;
   }
 
   try {
-    const startCount = await fetchMetricsCountFromApi();
+    const startCount = await fetchMetricsStartCountFromApi();
     state.startCountRemote = startCount;
     state.apiAvailable = true;
     updateStartCounter(startCount);
-    return;
   } catch {
     state.apiAvailable = false;
-    setApiStatus(
-      "سرویس آمار در دسترس نیست. شمارنده فقط در همین مرورگر نمایش داده می‌شود.",
-      "warning",
-    );
   }
 }
 
