@@ -3,10 +3,35 @@ import QUESTIONS from "./data/questions.js";
 const QUIZ_SIZE = 20;
 const QUIZ_VERSION = "v1";
 const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
-const API_TIMEOUT_MS = 6000;
+const API_TIMEOUT_MS = 15000;
 const COUNTER_DIGITS = 6;
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-const PUBLIC_COUNTER_BASE_URL = "https://api.counterapi.dev/v1";
+const PUBLIC_COUNTER_PROVIDERS = [
+  {
+    name: "counterapi-dev",
+    getUrl(namespace, key) {
+      return `https://api.counterapi.dev/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}/`;
+    },
+    hitUrl(namespace, key) {
+      return `https://api.counterapi.dev/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}/up`;
+    },
+    parseCount(payload) {
+      return Number(payload?.count);
+    },
+  },
+  {
+    name: "countapi-xyz",
+    getUrl(namespace, key) {
+      return `https://api.countapi.xyz/get/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
+    },
+    hitUrl(namespace, key) {
+      return `https://api.countapi.xyz/hit/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
+    },
+    parseCount(payload) {
+      return Number(payload?.value);
+    },
+  },
+];
 
 const metaApiBase = document
   .querySelector('meta[name="polimeter-api-base-url"]')
@@ -356,29 +381,43 @@ async function fetchMetricsCountFromApi() {
 async function fetchMetricsCountFromPublicCounter(mode = "get") {
   const namespace = getPublicCounterNamespace();
   const key = getPublicCounterKey();
-  const actionSuffix = mode === "hit" ? "/up" : "/";
-  const endpoint = `${PUBLIC_COUNTER_BASE_URL}/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}${actionSuffix}`;
+  let lastError = null;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  try {
-    const response = await fetch(endpoint, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`public_counter_request_failed_${response.status}`);
+  for (const provider of PUBLIC_COUNTER_PROVIDERS) {
+    const endpoint = mode === "hit"
+      ? provider.hitUrl(namespace, key)
+      : provider.getUrl(namespace, key);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `public_counter_request_failed_${provider.name}_${response.status}`,
+        );
+      }
+
+      const payload = await response.json();
+      const startCount = provider.parseCount(payload);
+      if (!Number.isFinite(startCount)) {
+        throw new Error(`invalid_public_counter_payload_${provider.name}`);
+      }
+
+      return Math.max(0, Math.floor(startCount));
+    } catch (error) {
+      lastError = error;
+    } finally {
+      clearTimeout(timeout);
     }
-    const payload = await response.json();
-    const startCount = Number(payload?.count);
-    if (!Number.isFinite(startCount)) {
-      throw new Error("invalid_public_counter_payload");
-    }
-    return Math.max(0, Math.floor(startCount));
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw lastError || new Error("public_counter_unavailable");
 }
 
 function readStartCountLocal() {
