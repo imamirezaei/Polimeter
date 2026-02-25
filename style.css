@@ -215,6 +215,26 @@ h2 {
   border-radius: 10px;
 }
 
+.consent-option {
+  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink);
+  line-height: 1.8;
+}
+
+.consent-option input {
+  margin-top: 6px;
+  accent-color: var(--accent);
+}
+
+.consent-note {
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 0.9rem;
+}
+
 .meta-row {
   display: flex;
   align-items: center;
@@ -437,6 +457,35 @@ h2 {
   text-align: center;
   color: var(--soft);
   font-size: 0.88rem;
+}
+
+.api-status {
+  margin: 10px auto 0;
+  width: min(920px, 94vw);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  border: 1px solid var(--panel-border);
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.api-status.success {
+  border-color: color-mix(in oklab, var(--ok) 42%, var(--panel-border));
+  color: var(--ok);
+}
+
+.api-status.warning {
+  border-color: color-mix(in oklab, var(--error) 35%, var(--panel-border));
+  color: var(--error);
+}
+
+.api-status.info {
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--panel-border));
+}
+
+.api-status.is-hidden {
+  display: none;
 }
 
 @media (max-width: 760px) {

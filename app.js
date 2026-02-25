@@ -1,8 +1,20 @@
 import QUESTIONS from "./data/questions.js";
 
 const QUIZ_SIZE = 20;
-const LOCAL_ATTEMPT_KEY = "polimeter_attempt_count";
+const QUIZ_VERSION = "v1";
+const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
 const THEME_KEY = "polimeter_theme_mode";
+const API_TIMEOUT_MS = 6000;
+
+const metaApiBase = document
+  .querySelector('meta[name="polimeter-api-base-url"]')
+  ?.getAttribute("content")
+  ?.trim();
+
+const API_BASE_URL =
+  (typeof window !== "undefined" && window.POLIMETER_API_BASE_URL) ||
+  metaApiBase ||
+  "";
 
 const QUIZ_STATES = {
   START: "start",
@@ -27,7 +39,11 @@ const state = {
   questions: [],
   answers: [],
   currentIndex: 0,
-  attemptCount: 0,
+  startCountLocal: 0,
+  startCountRemote: null,
+  apiAvailable: false,
+  consentToStoreAnswers: false,
+  startedAt: null,
 };
 
 const dom = {
@@ -35,6 +51,9 @@ const dom = {
   quizScreen: document.getElementById("screen-quiz"),
   resultScreen: document.getElementById("screen-result"),
   attemptCount: document.getElementById("attempt-count"),
+  startCountLabel: document.getElementById("start-count-label"),
+  consentCheckbox: document.getElementById("consent-checkbox"),
+  apiStatus: document.getElementById("api-status"),
   startBtn: document.getElementById("start-btn"),
   questionIndex: document.getElementById("question-index"),
   questionTotal: document.getElementById("question-total"),
@@ -59,6 +78,67 @@ const dom = {
   themeButtons: Array.from(document.querySelectorAll(".theme-btn")),
 };
 
+function toApiUrl(pathname) {
+  const base = String(API_BASE_URL || "").replace(/\/$/, "");
+  if (!base) {
+    return pathname;
+  }
+  return `${base}${pathname}`;
+}
+
+async function apiRequest(pathname, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(toApiUrl(pathname), {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json")
+      ? await response.json()
+      : null;
+
+    if (!response.ok) {
+      const message = body?.error || `request_failed_${response.status}`;
+      throw new Error(message);
+    }
+
+    return body;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function setApiStatus(message, type = "info") {
+  if (!dom.apiStatus) {
+    return;
+  }
+
+  if (!message) {
+    dom.apiStatus.textContent = "";
+    dom.apiStatus.className = "api-status is-hidden";
+    return;
+  }
+
+  dom.apiStatus.textContent = message;
+  dom.apiStatus.className = `api-status ${type}`;
+}
+
+function updateStartCounter(count, source = "local") {
+  dom.attemptCount.textContent = String(count);
+  dom.startCountLabel.textContent =
+    source === "remote"
+      ? "تعداد شروع آزمون (سراسری):"
+      : "تعداد شروع آزمون (این مرورگر):";
+}
+
 function shuffle(list) {
   const copy = [...list];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -75,7 +155,7 @@ function percentage(correct, total) {
   return Math.round((correct / total) * 100);
 }
 
-function readAttemptCount() {
+function readStartCountLocal() {
   try {
     const value = Number(localStorage.getItem(LOCAL_ATTEMPT_KEY));
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
@@ -84,11 +164,11 @@ function readAttemptCount() {
   }
 }
 
-function writeAttemptCount(value) {
+function writeStartCountLocal(value) {
   try {
     localStorage.setItem(LOCAL_ATTEMPT_KEY, String(value));
   } catch {
-    // ذخیره آماری اختیاری است.
+    // ذخیره local اختیاری است.
   }
 }
 
@@ -130,7 +210,10 @@ function applyTheme(mode) {
 function setPhase(nextPhase) {
   state.phase = nextPhase;
   dom.startScreen.classList.toggle("is-active", nextPhase === QUIZ_STATES.START);
-  dom.quizScreen.classList.toggle("is-active", nextPhase === QUIZ_STATES.IN_PROGRESS);
+  dom.quizScreen.classList.toggle(
+    "is-active",
+    nextPhase === QUIZ_STATES.IN_PROGRESS,
+  );
   dom.resultScreen.classList.toggle("is-active", nextPhase === QUIZ_STATES.RESULT);
 }
 
@@ -238,7 +321,10 @@ function findBestLeftPlan(pools, targetLeftCount) {
 
     for (let leftCount = min; leftCount <= max; leftCount += 1) {
       const nextLeftCount = partialLeftCount + leftCount;
-      if (nextLeftCount + remainingMin > safeTarget || nextLeftCount + remainingMax < safeTarget) {
+      if (
+        nextLeftCount + remainingMin > safeTarget ||
+        nextLeftCount + remainingMax < safeTarget
+      ) {
         continue;
       }
 
@@ -253,7 +339,6 @@ function findBestLeftPlan(pools, targetLeftCount) {
     return bestPlan;
   }
 
-  // fallback در حالت نادر: برنامه ساده می‌سازیم تا آزمون متوقف نشود.
   return {
     concept: Math.min(TYPE_QUOTAS.concept, pools.concept.left.length),
     statement: Math.min(TYPE_QUOTAS.statement, pools.statement.left.length),
@@ -303,13 +388,64 @@ function renderQuestion() {
   dom.feedback.classList.remove("is-correct", "is-wrong");
 }
 
+async function registerStartEvent(startedAt) {
+  state.startCountLocal += 1;
+  writeStartCountLocal(state.startCountLocal);
+  updateStartCounter(state.startCountLocal, "local");
+
+  try {
+    const data = await apiRequest("/api/metrics/start", {
+      method: "POST",
+      body: JSON.stringify({
+        started_at: startedAt,
+        quiz_version: QUIZ_VERSION,
+      }),
+    });
+
+    const startCount = Number(data?.start_count);
+    if (Number.isFinite(startCount)) {
+      state.startCountRemote = startCount;
+      state.apiAvailable = true;
+      updateStartCounter(startCount, "remote");
+      if (!state.consentToStoreAnswers) {
+        setApiStatus(
+          "آزمون شروع شد. چون تیک ذخیره فعال نیست، پاسخ‌ها ذخیره نخواهند شد.",
+          "info",
+        );
+      }
+    }
+  } catch {
+    state.apiAvailable = false;
+    setApiStatus(
+      "ثبت آماری سرور فعلا در دسترس نیست. آزمون بدون اختلال ادامه پیدا می‌کند.",
+      "warning",
+    );
+  }
+}
+
 function beginQuiz() {
+  state.consentToStoreAnswers = Boolean(dom.consentCheckbox?.checked);
+  state.startedAt = new Date().toISOString();
   state.questions = buildQuizQuestions();
   state.answers = [];
   state.currentIndex = 0;
 
   setPhase(QUIZ_STATES.IN_PROGRESS);
   renderQuestion();
+
+  if (state.consentToStoreAnswers) {
+    setApiStatus(
+      "با رضایت شما، پاسخ‌ها پس از پایان آزمون به‌صورت ناشناس ذخیره می‌شود.",
+      "info",
+    );
+  } else {
+    setApiStatus(
+      "آزمون بدون ذخیره پاسخ شما اجرا می‌شود.",
+      "info",
+    );
+  }
+
+  void registerStartEvent(state.startedAt);
 }
 
 function chooseAnswer(selectedSide) {
@@ -410,6 +546,37 @@ function computeMetrics() {
   };
 }
 
+async function submitAnswersIfConsented(completedAt) {
+  if (!state.consentToStoreAnswers) {
+    return;
+  }
+
+  const payload = {
+    consent_to_store_answers: true,
+    quiz_version: QUIZ_VERSION,
+    started_at: state.startedAt,
+    completed_at: completedAt,
+    answers: state.answers.map((answer) => ({
+      question_id: answer.questionId,
+      selected_side: answer.selectedSide,
+    })),
+  };
+
+  try {
+    await apiRequest("/api/submissions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    setApiStatus("پاسخ‌های این آزمون به‌صورت ناشناس ذخیره شد.", "success");
+  } catch {
+    setApiStatus(
+      "ثبت پاسخ‌ها انجام نشد، اما نتیجه آزمون شما محفوظ است.",
+      "warning",
+    );
+  }
+}
+
 function showResults() {
   const metrics = computeMetrics();
 
@@ -424,25 +591,50 @@ function showResults() {
   dom.statementScore.textContent = String(metrics.typeStats.statement);
   dom.definitionScore.textContent = String(metrics.typeStats.definition);
 
-  state.attemptCount += 1;
-  writeAttemptCount(state.attemptCount);
-  dom.attemptCount.textContent = String(state.attemptCount);
-
   setPhase(QUIZ_STATES.RESULT);
+
+  const completedAt = new Date().toISOString();
+  void submitAnswersIfConsented(completedAt);
 }
 
 function restartQuiz() {
   state.questions = [];
   state.answers = [];
   state.currentIndex = 0;
+  state.consentToStoreAnswers = false;
+  state.startedAt = null;
 
   setPhase(QUIZ_STATES.START);
 }
 
+async function syncCounterOnLoad() {
+  state.startCountLocal = readStartCountLocal();
+  updateStartCounter(state.startCountLocal, "local");
+
+  try {
+    const data = await apiRequest("/api/metrics", { method: "GET" });
+    const startCount = Number(data?.start_count);
+    if (Number.isFinite(startCount)) {
+      state.startCountRemote = startCount;
+      state.apiAvailable = true;
+      updateStartCounter(startCount, "remote");
+      setApiStatus("اتصال به سرویس آمار برقرار است.", "success");
+      return;
+    }
+
+    throw new Error("invalid_metric_payload");
+  } catch {
+    state.apiAvailable = false;
+    setApiStatus(
+      "سرویس آمار در دسترس نیست. شمارنده فقط در همین مرورگر نمایش داده می‌شود.",
+      "warning",
+    );
+  }
+}
+
 function initialize() {
-  state.attemptCount = readAttemptCount();
-  dom.attemptCount.textContent = String(state.attemptCount);
   applyTheme(readThemeMode());
+  void syncCounterOnLoad();
 
   dom.startBtn.addEventListener("click", beginQuiz);
   dom.leftBtn.addEventListener("click", () => chooseAnswer("left"));

@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="polimeter-api-base-url"
+      content=""
+    />
     <title>پُلیمتر | آزمون مفهومی چپ و راست</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -48,8 +52,15 @@
             <li>نمره‌دهی کاملا محلی و قطعی است.</li>
           </ul>
           <p class="attempt-counter">
-            دفعات شرکت در این مرورگر:
+            <span id="start-count-label">تعداد شروع آزمون:</span>
             <strong id="attempt-count">0</strong>
+          </p>
+          <label class="consent-option" for="consent-checkbox">
+            <input id="consent-checkbox" type="checkbox" />
+            <span>مایلم پاسخ‌های این آزمون به‌صورت ناشناس برای تحلیل محصول ذخیره شود.</span>
+          </label>
+          <p class="consent-note">
+            هیچ داده هویتی ذخیره نمی‌شود. اگر این تیک را نزنید، پاسخ‌های شما ذخیره نخواهند شد.
           </p>
           <div class="actions">
             <button id="start-btn" class="btn btn-primary" type="button">
@@ -159,8 +170,9 @@
       </main>
 
       <p class="footer-note">
-        این پروژه کاملا محلی اجرا می‌شود و نمره‌دهی مبتنی بر هوش مصنوعی ندارد.
+        نمره‌دهی این آزمون محلی است و ذخیره پاسخ فقط با رضایت شما انجام می‌شود.
       </p>
+      <p id="api-status" class="api-status" aria-live="polite"></p>
     </div>
 
     <script type="module" src="./app.js"></script>
