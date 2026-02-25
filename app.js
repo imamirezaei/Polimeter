@@ -6,7 +6,7 @@ const LOCAL_ATTEMPT_KEY = "polimeter_start_count_local";
 const API_TIMEOUT_MS = 6000;
 const COUNTER_DIGITS = 6;
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-const PUBLIC_COUNTER_BASE_URL = "https://api.countapi.xyz";
+const PUBLIC_COUNTER_BASE_URL = "https://api.counterapi.dev/v1";
 
 const metaApiBase = document
   .querySelector('meta[name="polimeter-api-base-url"]')
@@ -354,10 +354,10 @@ async function fetchMetricsCountFromApi() {
 }
 
 async function fetchMetricsCountFromPublicCounter(mode = "get") {
-  const action = mode === "hit" ? "hit" : "get";
   const namespace = getPublicCounterNamespace();
   const key = getPublicCounterKey();
-  const endpoint = `${PUBLIC_COUNTER_BASE_URL}/${action}/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
+  const actionSuffix = mode === "hit" ? "/up" : "/";
+  const endpoint = `${PUBLIC_COUNTER_BASE_URL}/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}${actionSuffix}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
@@ -371,7 +371,7 @@ async function fetchMetricsCountFromPublicCounter(mode = "get") {
       throw new Error(`public_counter_request_failed_${response.status}`);
     }
     const payload = await response.json();
-    const startCount = Number(payload?.value);
+    const startCount = Number(payload?.count);
     if (!Number.isFinite(startCount)) {
       throw new Error("invalid_public_counter_payload");
     }
