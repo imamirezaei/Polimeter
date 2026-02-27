@@ -9,6 +9,7 @@ const MAX_QUESTION_ID_LENGTH = 64;
 const MAX_AXIS_ID_LENGTH = 64;
 const MAX_AXIS_TITLE_LENGTH = 128;
 const MAX_ANSWERS_PER_SUBMISSION = 100;
+const MAX_RESULT_SUMMARY_CHARS = 20000;
 
 export default {
   async fetch(request, env) {
@@ -393,11 +394,18 @@ function normalizeSubmissionPayload(payload) {
     });
   }
 
+  const resultSummary = normalizeOptionalStructuredObject(
+    payload?.result_summary,
+    MAX_RESULT_SUMMARY_CHARS,
+    "invalid_result_summary",
+  );
+
   return {
     quizVersion,
     startedAt,
     completedAt,
     answers,
+    resultSummary,
   };
 }
 
@@ -425,7 +433,7 @@ async function storeAnswererSubmission(answersDb, payload) {
 }
 
 function buildRawSubmissionPayload(payload) {
-  return {
+  const submission = {
     consent_to_store_answers: true,
     quiz_version: payload.quizVersion,
     started_at: payload.startedAt,
@@ -439,6 +447,12 @@ function buildRawSubmissionPayload(payload) {
       question_axis_title: answer.questionAxisTitle,
     })),
   };
+
+  if (payload.resultSummary) {
+    submission.result_summary = payload.resultSummary;
+  }
+
+  return submission;
 }
 
 function normalizePathname(pathname) {
@@ -480,6 +494,29 @@ function normalizeOptionalText(value, maxLength) {
     throw new ValidationError("invalid_text_field");
   }
   return text;
+}
+
+function normalizeOptionalStructuredObject(value, maxChars, errorCode) {
+  if (value == null) {
+    return null;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ValidationError(errorCode);
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized || serialized.length > maxChars) {
+      throw new ValidationError(errorCode);
+    }
+    return JSON.parse(serialized);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ValidationError(errorCode);
+  }
 }
 
 function normalizeTimestampOrNull(value, errorCode) {

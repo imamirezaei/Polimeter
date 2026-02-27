@@ -1,0 +1,55 @@
+name: Refresh Dashboard Data
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh backups and dashboard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          POLIMETER_ANSWERERS_DB_NAME: polimeter-answerers
+          POLIMETER_METRICS_DB_NAME: polimeter-metrics
+          POLIMETER_METRICS_KEY: quiz_starts_total
+        run: bash scripts/refresh-dashboard-data.sh
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push changes
+        run: |
+          git add backups
+          if git diff --cached --quiet; then
+            echo "No backup changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: refresh dashboard data"
+          git push

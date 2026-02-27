@@ -5,3 +5,9 @@ npm-debug.log*
 storage/metrics.json
 storage/submissions.ndjson
 report/questions-audit.json
+cloudflare-worker/.wrangler/
+local-dashboard/dashboard.js
+local-dashboard/index.html
+local-dashboard/style.css
+local-dashboard/outputs/
+local-dashboard/__pycache__/

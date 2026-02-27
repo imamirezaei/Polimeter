@@ -23,10 +23,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
+      - name: Build analytics dashboard
+        run: python3 local-dashboard/app.py --build-only
 
       - name: Prepare static artifact
         run: |
@@ -36,6 +49,10 @@ jobs:
           [ -f og-image.svg ] && cp og-image.svg site/
           [ -d storage ] && cp -R storage site/
           [ -d data ] && cp -R data site/
+          if [ -f local-dashboard/index.html ]; then
+            mkdir -p site/local-dashboard
+            cp local-dashboard/index.html local-dashboard/style.css local-dashboard/dashboard.js site/local-dashboard/
+          fi
           touch site/.nojekyll
 
       - name: Upload Pages artifact

@@ -247,6 +247,66 @@ h3 {
   padding: 0 12px 12px;
 }
 
+.intro-source-block {
+  margin-top: 18px;
+  padding: 14px 16px 4px;
+  border-top: 1px solid rgba(138, 170, 224, 0.12);
+}
+
+.intro-source-note,
+.intro-source-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.95;
+  font-size: 0.94rem;
+}
+
+.intro-source-note {
+  margin-bottom: 18px;
+}
+
+.intro-source-heading {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.intro-source-section {
+  margin-bottom: 18px;
+}
+
+.intro-source-subtitle {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.intro-source-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.intro-source-list li {
+  position: relative;
+  padding-right: 18px;
+  color: var(--muted);
+  line-height: 1.95;
+  font-size: 0.94rem;
+}
+
+.intro-source-list li::before {
+  content: "•";
+  position: absolute;
+  right: 0;
+  top: 0;
+  color: var(--accent-2);
+}
+
 .section-divider {
   height: 1px;
   background: linear-gradient(
@@ -571,10 +631,6 @@ h3 {
   filter: brightness(0.96);
 }
 
-.start-actions {
-  margin-top: 4px;
-}
-
 .btn-choice {
   font-size: 0.98rem;
   font-weight: 700;
@@ -675,6 +731,23 @@ h3 {
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
+}
+
+.actions.start-actions {
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-content: stretch;
+  gap: 12px;
+}
+
+.actions.start-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  justify-content: center;
+  min-height: 56px;
+  border-radius: 100px;
 }
 
 .btn-secondary {
@@ -881,11 +954,26 @@ h3 {
   background: var(--surface);
   border-radius: 12px;
   padding: 11px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   color: var(--muted);
+}
+
+.stats-line span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .stats-line strong {
   color: var(--ink);
+}
+
+.stats-note {
+  margin: 8px 2px 0;
+  color: var(--soft);
+  font-size: 0.84rem;
 }
 
 .axis-breakdown {

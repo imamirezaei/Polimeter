@@ -1,10 +1,12 @@
 import QUESTIONS from "./data/questions.js";
 
 const QUIZ_SIZE = 20;
-const QUIZ_VERSION = "v1";
+const QUIZ_VERSION = "v3-side-penalty";
 const API_TIMEOUT_MS = 15000;
 const COUNTER_POST_TIMEOUT_MS = 4000;
 const COUNTER_DIGITS = 6;
+const WRONG_ANSWER_PENALTY_INTERVAL = 3;
+const PENALTY_GROUP_ORDER = ["left", "right"];
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 
 const metaApiBase = document
@@ -105,6 +107,10 @@ const dom = {
   rightScore: document.getElementById("score-right"),
   correctCount: document.getElementById("correct-count"),
   wrongCount: document.getElementById("wrong-count"),
+  neutralCount: document.getElementById("neutral-count"),
+  penaltyCount: document.getElementById("penalty-count"),
+  effectiveCorrectCount: document.getElementById("effective-correct-count"),
+  alignmentBreakdown: document.getElementById("alignment-breakdown"),
   axisBreakdown: document.getElementById("axis-breakdown"),
   reviewList: document.getElementById("review-list"),
   reviewEmpty: document.getElementById("review-empty"),
@@ -213,6 +219,19 @@ function formatFaNumber(value) {
   }
 }
 
+function formatFaDecimal(value, maximumFractionDigits = 2) {
+  try {
+    return new Intl.NumberFormat("fa-IR", {
+      useGrouping: false,
+      minimumFractionDigits: 0,
+      maximumFractionDigits,
+    }).format(Number(value) || 0);
+  } catch {
+    const safeNumber = Number(value) || 0;
+    return toFaDigits(safeNumber.toFixed(maximumFractionDigits).replace(/\.?0+$/, ""));
+  }
+}
+
 function clampScore(value) {
   if (!Number.isFinite(value)) {
     return 0;
@@ -285,32 +304,16 @@ function getQuestionWeight(question) {
   return raw;
 }
 
-function computeSideF1(questions, answerByQuestionId, side) {
-  let truePositive = 0;
-  let falsePositive = 0;
-  let falseNegative = 0;
-
-  for (const question of questions) {
-    const weight = getQuestionWeight(question);
-    const answer = answerByQuestionId.get(question.id);
-    const selectedSide = answer?.selectedSide;
-
-    const isActualSide = question.correct_side === side;
-    const isPredictedSide = selectedSide === side;
-
-    if (isActualSide && isPredictedSide) {
-      truePositive += weight;
-    } else if (!isActualSide && isPredictedSide) {
-      falsePositive += weight;
-    } else if (isActualSide && !isPredictedSide) {
-      falseNegative += weight;
-    }
+function roundMetricValue(value, digits = 4) {
+  if (!Number.isFinite(value)) {
+    return 0;
   }
+  return Number(value.toFixed(digits));
+}
 
-  const precision = safeDivide(truePositive, truePositive + falsePositive);
-  const recall = safeDivide(truePositive, truePositive + falseNegative);
-
-  return safeDivide(2 * precision * recall, precision + recall);
+function computeWrongPenaltyCount(wrongCount) {
+  const safeWrongCount = Math.max(0, Math.floor(Number(wrongCount) || 0));
+  return safeWrongCount / WRONG_ANSWER_PENALTY_INTERVAL;
 }
 
 function parseStartCounterPayload(payload) {
@@ -775,22 +778,39 @@ function prevQuestion() {
 
 function computeMetrics() {
   const totalQuestions = state.questions.length || QUIZ_SIZE;
-  const correctCount = state.answers.filter((entry) => entry.isCorrect).length;
-  const wrongCount = state.answers.length - correctCount;
   const answerByQuestionId = new Map(
     state.answers.map((answer) => [answer.questionId, answer]),
   );
 
   let weightedTotal = 0;
   let weightedCorrect = 0;
+  let correctCount = 0;
+  let wrongCount = 0;
+  let neutralCount = 0;
 
+  const groupMap = new Map();
   const axisMap = new Map();
   for (const question of state.questions) {
     const weight = getQuestionWeight(question);
+    const groupId = SIDE_LABELS[question.correct_side] ? question.correct_side : "unknown";
+    const groupTitle = SIDE_LABELS[groupId] || "نامشخص";
     const axisId = String(question.axis || "");
     const axisTitle = String(question.axis_title || "").trim()
       || AXIS_LABELS[axisId]
       || "بدون محور";
+
+    if (!groupMap.has(groupId)) {
+      groupMap.set(groupId, {
+        groupId,
+        groupTitle,
+        total: 0,
+        correct: 0,
+        wrong: 0,
+        neutral: 0,
+        weightedTotal: 0,
+        weightedCorrect: 0,
+      });
+    }
 
     if (!axisMap.has(axisId)) {
       axisMap.set(axisId, {
@@ -799,28 +819,96 @@ function computeMetrics() {
         total: 0,
         correct: 0,
         wrong: 0,
+        neutral: 0,
         weightedTotal: 0,
         weightedCorrect: 0,
       });
     }
 
+    const groupEntry = groupMap.get(groupId);
     const axisEntry = axisMap.get(axisId);
+    groupEntry.total += 1;
+    groupEntry.weightedTotal += weight;
     axisEntry.total += 1;
     axisEntry.weightedTotal += weight;
     weightedTotal += weight;
 
     const answer = answerByQuestionId.get(question.id);
-    if (answer?.isCorrect) {
+    if (!answer) {
+      continue;
+    }
+
+    if (answer.selectedSide === "neutral") {
+      groupEntry.neutral += 1;
+      axisEntry.neutral += 1;
+      neutralCount += 1;
+      continue;
+    }
+
+    if (answer.isCorrect) {
+      groupEntry.correct += 1;
+      groupEntry.weightedCorrect += weight;
       axisEntry.correct += 1;
       axisEntry.weightedCorrect += weight;
       weightedCorrect += weight;
+      correctCount += 1;
     } else {
+      groupEntry.wrong += 1;
       axisEntry.wrong += 1;
+      wrongCount += 1;
     }
   }
 
-  const leftF1 = computeSideF1(state.questions, answerByQuestionId, "left");
-  const rightF1 = computeSideF1(state.questions, answerByQuestionId, "right");
+  let weightedPenalizedCorrect = 0;
+  let penaltyCount = 0;
+  let effectiveCorrectCount = 0;
+  const alignmentStats = Array.from(groupMap.values())
+    .sort((a, b) => {
+      const aIndex = PENALTY_GROUP_ORDER.indexOf(a.groupId);
+      const bIndex = PENALTY_GROUP_ORDER.indexOf(b.groupId);
+      const safeA = aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex;
+      const safeB = bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex;
+      if (safeA !== safeB) {
+        return safeA - safeB;
+      }
+      return a.groupTitle.localeCompare(b.groupTitle, "fa");
+    })
+    .map((groupEntry) => {
+      const averageWeight = safeDivide(groupEntry.weightedTotal, groupEntry.total) || 1;
+      const penalty = computeWrongPenaltyCount(groupEntry.wrong);
+      const penaltyWeight = Math.min(
+        groupEntry.weightedCorrect,
+        penalty * averageWeight,
+      );
+      const effectiveCorrect = Math.max(0, groupEntry.correct - penalty);
+      const weightedEffectiveCorrect = Math.max(
+        0,
+        groupEntry.weightedCorrect - penaltyWeight,
+      );
+
+      penaltyCount += penalty;
+      effectiveCorrectCount += effectiveCorrect;
+      weightedPenalizedCorrect += weightedEffectiveCorrect;
+
+      return {
+        ...groupEntry,
+        penaltyCount: penalty,
+        effectiveCorrect,
+        averageWeight: roundMetricValue(averageWeight),
+        weightedPenalty: roundMetricValue(penaltyWeight),
+        weightedEffectiveCorrect: roundMetricValue(weightedEffectiveCorrect),
+        rawPercent: clampScore(
+          safeDivide(groupEntry.weightedCorrect, groupEntry.weightedTotal) * 100,
+        ),
+        percent: clampScore(
+          safeDivide(weightedEffectiveCorrect, groupEntry.weightedTotal) * 100,
+        ),
+      };
+    });
+
+  const alignmentScoreBySide = new Map(
+    alignmentStats.map((entry) => [entry.groupId, entry.percent]),
+  );
 
   const axisStats = Array.from(axisMap.values())
     .sort((a, b) => {
@@ -835,20 +923,26 @@ function computeMetrics() {
     })
     .map((axisEntry) => ({
       ...axisEntry,
-      percent: clampScore(
+      rawPercent: clampScore(
         safeDivide(axisEntry.weightedCorrect, axisEntry.weightedTotal) * 100,
       ),
     }));
 
   return {
-    totalScore: clampScore(safeDivide(weightedCorrect, weightedTotal) * 100),
-    leftScore: clampScore(leftF1 * 100),
-    rightScore: clampScore(rightF1 * 100),
+    totalScore: clampScore(safeDivide(weightedPenalizedCorrect, weightedTotal) * 100),
+    rawTotalScore: clampScore(safeDivide(weightedCorrect, weightedTotal) * 100),
+    leftScore: Number(alignmentScoreBySide.get("left") || 0),
+    rightScore: Number(alignmentScoreBySide.get("right") || 0),
     correctCount,
     wrongCount,
+    neutralCount,
+    penaltyCount,
+    effectiveCorrectCount,
     totalQuestions,
     weightedTotal,
     weightedCorrect,
+    weightedPenalizedCorrect: roundMetricValue(weightedPenalizedCorrect),
+    alignmentStats,
     axisStats,
   };
 }
@@ -939,6 +1033,46 @@ function renderReviewList() {
   });
 }
 
+function renderAlignmentBreakdown(alignmentStats) {
+  if (!dom.alignmentBreakdown) {
+    return;
+  }
+
+  if (!Array.isArray(alignmentStats) || alignmentStats.length === 0) {
+    dom.alignmentBreakdown.innerHTML = `
+      <p class="axis-empty">داده‌ای برای نمایش عملکرد گرایش‌ها در دسترس نیست.</p>
+    `;
+    return;
+  }
+
+  dom.alignmentBreakdown.innerHTML = alignmentStats
+    .map((entry) => {
+      const title = escapeHtml(entry.groupTitle);
+      const total = formatFaNumber(entry.total);
+      const correct = formatFaNumber(entry.correct);
+      const wrong = formatFaNumber(entry.wrong);
+      const neutral = formatFaNumber(entry.neutral);
+      const penalty = formatFaDecimal(entry.penaltyCount);
+      const effectiveCorrect = formatFaDecimal(entry.effectiveCorrect);
+      const percent = formatFaNumber(entry.percent);
+      return `
+        <article class="axis-stat">
+          <p class="axis-stat-title">${title}</p>
+          <p class="axis-stat-meta">
+            <span>درست ${correct}</span>
+            <span>غلط ${wrong}</span>
+            <span>نظری ندارم ${neutral}</span>
+            <span>جریمه ${penalty}</span>
+            <span>درست موثر ${effectiveCorrect}</span>
+            <span>از ${total}</span>
+            <span>${percent}%</span>
+          </p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderAxisBreakdown(axisStats) {
   if (!dom.axisBreakdown) {
     return;
@@ -957,13 +1091,15 @@ function renderAxisBreakdown(axisStats) {
       const total = formatFaNumber(axisEntry.total);
       const correct = formatFaNumber(axisEntry.correct);
       const wrong = formatFaNumber(axisEntry.wrong);
-      const percent = formatFaNumber(axisEntry.percent);
+      const neutral = formatFaNumber(axisEntry.neutral);
+      const percent = formatFaNumber(axisEntry.rawPercent);
       return `
         <article class="axis-stat">
           <p class="axis-stat-title">${axisTitle}</p>
           <p class="axis-stat-meta">
             <span>درست ${correct}</span>
             <span>غلط ${wrong}</span>
+            <span>نظری ندارم ${neutral}</span>
             <span>از ${total}</span>
             <span>${percent}%</span>
           </p>
@@ -979,18 +1115,72 @@ function buildShareText(metrics) {
     `نمره کل: ${formatFaNumber(metrics.totalScore)} از ۱۰۰`,
     `نمره چپ: ${formatFaNumber(metrics.leftScore)} از ۱۰۰`,
     `نمره راست: ${formatFaNumber(metrics.rightScore)} از ۱۰۰`,
-    `پاسخ درست: ${formatFaNumber(metrics.correctCount)} | پاسخ غلط: ${formatFaNumber(metrics.wrongCount)}`,
+    `پاسخ درست: ${formatFaNumber(metrics.correctCount)} | پاسخ غلط: ${formatFaNumber(metrics.wrongCount)} | نظری ندارم: ${formatFaNumber(metrics.neutralCount)} | کسر منفی: ${formatFaDecimal(metrics.penaltyCount)} | درست موثر: ${formatFaDecimal(metrics.effectiveCorrectCount)}`,
     "",
-    "عملکرد محورها:",
+    "عملکرد گرایش‌ها:",
   ];
 
+  for (const axisEntry of metrics.alignmentStats || []) {
+    lines.push(
+      `${axisEntry.groupTitle}: درست ${formatFaNumber(axisEntry.correct)} | غلط ${formatFaNumber(axisEntry.wrong)} | نظری ندارم ${formatFaNumber(axisEntry.neutral)} | کسر منفی ${formatFaDecimal(axisEntry.penaltyCount)} | درست موثر ${formatFaDecimal(axisEntry.effectiveCorrect)} | ${formatFaNumber(axisEntry.percent)}%`,
+    );
+  }
+
+  lines.push("", "عملکرد محورها:");
   for (const axisEntry of metrics.axisStats || []) {
     lines.push(
-      `${axisEntry.axisTitle}: ${formatFaNumber(axisEntry.correct)} درست از ${formatFaNumber(axisEntry.total)}`,
+      `${axisEntry.axisTitle}: درست ${formatFaNumber(axisEntry.correct)} | غلط ${formatFaNumber(axisEntry.wrong)} | نظری ندارم ${formatFaNumber(axisEntry.neutral)} | ${formatFaNumber(axisEntry.rawPercent)}%`,
     );
   }
 
   return lines.join("\n");
+}
+
+function buildSubmissionResultSummary(metrics) {
+  return {
+    total_score: metrics.totalScore,
+    raw_total_score: metrics.rawTotalScore,
+    left_score: metrics.leftScore,
+    right_score: metrics.rightScore,
+    total_questions: metrics.totalQuestions,
+    correct_count: metrics.correctCount,
+    wrong_count: metrics.wrongCount,
+    neutral_count: metrics.neutralCount,
+    penalty_grouping: "correct_side",
+    penalty_ratio_per_wrong: roundMetricValue(1 / WRONG_ANSWER_PENALTY_INTERVAL),
+    penalty_count: roundMetricValue(metrics.penaltyCount),
+    effective_correct_count: roundMetricValue(metrics.effectiveCorrectCount),
+    weighted_total: roundMetricValue(metrics.weightedTotal),
+    weighted_correct: roundMetricValue(metrics.weightedCorrect),
+    weighted_effective_correct: roundMetricValue(metrics.weightedPenalizedCorrect),
+    alignment_stats: (metrics.alignmentStats || []).map((axisEntry) => ({
+      side: axisEntry.groupId,
+      side_title: axisEntry.groupTitle,
+      total_questions: axisEntry.total,
+      correct_count: axisEntry.correct,
+      wrong_count: axisEntry.wrong,
+      neutral_count: axisEntry.neutral,
+      penalty_count: roundMetricValue(axisEntry.penaltyCount),
+      effective_correct_count: roundMetricValue(axisEntry.effectiveCorrect),
+      raw_score_percent: axisEntry.rawPercent,
+      score_percent: axisEntry.percent,
+      weighted_total: roundMetricValue(axisEntry.weightedTotal),
+      weighted_correct: roundMetricValue(axisEntry.weightedCorrect),
+      weighted_penalty: roundMetricValue(axisEntry.weightedPenalty),
+      weighted_effective_correct: roundMetricValue(axisEntry.weightedEffectiveCorrect),
+    })),
+    axis_stats: (metrics.axisStats || []).map((axisEntry) => ({
+      axis_id: axisEntry.axisId,
+      axis_title: axisEntry.axisTitle,
+      total_questions: axisEntry.total,
+      correct_count: axisEntry.correct,
+      wrong_count: axisEntry.wrong,
+      neutral_count: axisEntry.neutral,
+      raw_score_percent: axisEntry.rawPercent,
+      weighted_total: roundMetricValue(axisEntry.weightedTotal),
+      weighted_correct: roundMetricValue(axisEntry.weightedCorrect),
+    })),
+  };
 }
 
 async function shareResults() {
@@ -1056,6 +1246,7 @@ async function submitAnswersIfConsented(completedAt) {
       question_axis: answer.questionAxis,
       question_axis_title: answer.questionAxisTitle,
     })),
+    result_summary: buildSubmissionResultSummary(state.lastMetrics),
   };
 
   try {
@@ -1093,6 +1284,16 @@ function showResults() {
 
   dom.correctCount.textContent = formatFaNumber(metrics.correctCount);
   dom.wrongCount.textContent = formatFaNumber(metrics.wrongCount);
+  if (dom.neutralCount) {
+    dom.neutralCount.textContent = formatFaNumber(metrics.neutralCount);
+  }
+  if (dom.penaltyCount) {
+    dom.penaltyCount.textContent = formatFaDecimal(metrics.penaltyCount);
+  }
+  if (dom.effectiveCorrectCount) {
+    dom.effectiveCorrectCount.textContent = formatFaDecimal(metrics.effectiveCorrectCount);
+  }
+  renderAlignmentBreakdown(metrics.alignmentStats);
   renderAxisBreakdown(metrics.axisStats);
 
   setPhase(QUIZ_STATES.RESULT);
@@ -1111,6 +1312,9 @@ function restartQuiz() {
   state.startedAt = null;
   state.lastMetrics = null;
   state.startRequestInFlight = false;
+  if (dom.alignmentBreakdown) {
+    dom.alignmentBreakdown.innerHTML = "";
+  }
   if (dom.axisBreakdown) {
     dom.axisBreakdown.innerHTML = "";
   }
@@ -1119,6 +1323,21 @@ function restartQuiz() {
   }
   if (dom.reviewEmpty) {
     dom.reviewEmpty.classList.add("is-hidden");
+  }
+  if (dom.correctCount) {
+    dom.correctCount.textContent = "۰";
+  }
+  if (dom.wrongCount) {
+    dom.wrongCount.textContent = "۰";
+  }
+  if (dom.neutralCount) {
+    dom.neutralCount.textContent = "۰";
+  }
+  if (dom.penaltyCount) {
+    dom.penaltyCount.textContent = "۰";
+  }
+  if (dom.effectiveCorrectCount) {
+    dom.effectiveCorrectCount.textContent = "۰";
   }
   if (dom.startBtn) {
     dom.startBtn.disabled = false;

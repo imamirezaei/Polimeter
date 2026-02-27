@@ -15,32 +15,36 @@ Polimeter is designed around a simple methodological principle: assess conceptua
 
 Polimeter computes three core score outputs:
 
-1. Total score (Weighted Accuracy)
+1. Total score (Left/right-penalized weighted accuracy)
 
 ```text
-TotalScore = 100 * (sum(weight_i * correct_i) / sum(weight_i))
+Penalty_j = WrongAnswers_j / 3
+EffectiveCorrect_j = max(0, CorrectAnswers_j - Penalty_j)
+TotalScore = 100 * (
+  sum(weight_j * EffectiveCorrect_j) / sum(weight_j * TotalQuestions_j)
+)
 ```
 
 - `correct_i` is `1` for a correct answer, `0` otherwise.
-- Question weights are loaded from the question bank.
-- `neutral` is scored as incorrect for that question.
+- The penalty is applied separately inside the `left` and `right` answer buckets.
+- Every wrong answer removes one-third of one correct answer from the same bucket.
+- `neutral` is tracked separately and shown separately in the final results.
 
-2. Left and Right scores (Weighted F1, one-vs-rest)
+2. Left and Right scores (Penalized side performance)
 
 ```text
-Precision = TP / (TP + FP)
-Recall    = TP / (TP + FN)
-F1        = 2 * Precision * Recall / (Precision + Recall)
-SideScore = 100 * F1
+Penalty_j = WrongAnswers_j / 3
+EffectiveCorrect_j = max(0, CorrectAnswers_j - Penalty_j)
+SideScore_j = 100 * (EffectiveCorrect_j / TotalQuestions_j)
 ```
 
-This avoids inflated scores from one-sided response patterns.
+These are the same side-level percentages shown in the final alignment breakdown.
 
 3. Axis breakdown
 
 - Each question belongs to an axis.
-- Axis-level totals and correctness are reported.
-- Axis percentages are computed with weighted correctness.
+- The quiz result page reports raw weighted correctness per axis.
+- The published analytics dashboard reports per-axis penalized weighted accuracy and neutral share across stored responses.
 
 ## Social Concern
 
@@ -68,6 +72,7 @@ The project intentionally prioritizes:
 
 - Static app hosted on GitHub Pages
 - Files: `index.html`, `style.css`, `app.js`, `data/questions.js`
+- Participants dashboard is published under `local-dashboard/` on the same Pages site
 
 ### Backend
 
@@ -121,6 +126,7 @@ Only when the user explicitly checks the consent box, the frontend sends:
 - selected side per question
 - correctness metadata
 - axis metadata
+- per-side result summary (including wrong-answer penalty and neutral counts)
 - quiz/session timestamps
 
 No direct personal identifiers are stored by this flow.
@@ -196,6 +202,19 @@ npm run dev
 
 Default local URL: `http://localhost:8787`
 
+## Dashboard Refresh via GitHub Actions
+
+- `refresh-dashboard.yml` runs every 24 hours and can also be started manually.
+- It exports the latest answerer backup from Cloudflare D1, snapshots `metrics_counters.value` from `polimeter-metrics`, and rebuilds the dashboard.
+- Dashboard builds also try to read the live participant counter from the public Cloudflare Worker endpoint and fall back to the latest snapshot if needed.
+- `deploy-pages.yml` rebuilds `local-dashboard/` during each Pages deployment and publishes it alongside the quiz.
+- In the dashboard, overall KPIs, left/right summaries, and axis summaries use the current negative-marking logic; the question-quality table remains a raw per-question correctness view.
+
+Required repository secrets for the scheduled refresh:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
 ## Repository Structure
 
 ```text
@@ -215,8 +234,12 @@ Default local URL: `http://localhost:8787`
 │   │   ├── 0001_answerer_schema.sql
 │   │   └── 0002_answerer_json_storage.sql
 │   └── wrangler.toml.example
+├── local-dashboard/
+│   ├── app.py
+│   └── README.md
 └── .github/workflows/
-    └── deploy-pages.yml
+    ├── deploy-pages.yml
+    └── refresh-dashboard.yml
 ```
 
 ## License

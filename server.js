@@ -26,6 +26,8 @@ const STORAGE_DIR = path.join(ROOT_DIR, "storage");
 const METRICS_FILE = path.join(STORAGE_DIR, "metrics.json");
 const SUBMISSIONS_FILE = path.join(STORAGE_DIR, "submissions.ndjson");
 const ALLOWED_SELECTED_SIDES = new Set(["left", "right", "neutral"]);
+const MAX_OPTIONAL_TEXT_LENGTH = 128;
+const MAX_RESULT_SUMMARY_CHARS = 20000;
 
 const app = express();
 
@@ -34,6 +36,39 @@ const isIsoTimestamp = (value) =>
 
 const isValidQuizVersion = (value) =>
   typeof value === "string" && /^[a-zA-Z0-9._-]{1,32}$/.test(value);
+
+const normalizeOptionalText = (value, maxLength = MAX_OPTIONAL_TEXT_LENGTH) => {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  const text = String(value).trim();
+  if (!text || text.length > maxLength) {
+    return null;
+  }
+
+  return text;
+};
+
+const sanitizeStructuredObject = (value, maxChars = MAX_RESULT_SUMMARY_CHARS) => {
+  if (value == null) {
+    return null;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized || serialized.length > maxChars) {
+      return null;
+    }
+    return JSON.parse(serialized);
+  } catch {
+    return null;
+  }
+};
 
 const isValidAnswerItem = (item) => {
   if (!item || typeof item !== "object") {
@@ -216,10 +251,26 @@ app.post("/api/submissions", async (req, res) => {
     return res.status(422).json({ ok: false, error: "answer_item_invalid" });
   }
 
-  const sanitizedAnswers = answers.map((item) => ({
-    question_id: String(item.question_id),
-    selected_side: String(item.selected_side),
-  }));
+  const sanitizedAnswers = answers.map((item) => {
+    const selectedSide = String(item.selected_side);
+    const correctSide = normalizeOptionalText(item.correct_side, 16);
+    const derivedIsCorrect = correctSide
+      ? selectedSide === correctSide
+      : null;
+
+    return {
+      question_id: String(item.question_id),
+      selected_side: selectedSide,
+      correct_side: correctSide,
+      is_correct: typeof item.is_correct === "boolean"
+        ? item.is_correct
+        : derivedIsCorrect,
+      question_axis: normalizeOptionalText(item.question_axis, 64),
+      question_axis_title: normalizeOptionalText(item.question_axis_title, 128),
+    };
+  });
+
+  const resultSummary = sanitizeStructuredObject(req.body?.result_summary);
 
   const record = {
     submission_id: createSubmissionId(),
@@ -227,6 +278,7 @@ app.post("/api/submissions", async (req, res) => {
     started_at: startedAt,
     completed_at: completedAt,
     answers: sanitizedAnswers,
+    result_summary: resultSummary,
     saved_at: nowIso(),
   };
 
